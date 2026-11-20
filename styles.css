@@ -292,17 +292,18 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 
 @media (max-width: 640px) {
   .opts { grid-template-columns: 1fr; gap: 10px; }
-  #chapters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-top: 8px; }
-  #chapters button { white-space: nowrap; flex: 0 0 auto; }
-  .idle { gap: 12px; }
-  .idle h1 { font-size: 18px; margin: 2px 0 0; }
-  .idle .muted { font-size: 12.5px; }
-  .modegrid { margin-top: 6px; gap: 10px; }
-  .modecard { padding: 11px 13px; }
-  .modecard b { font-size: 13.5px; }
-  .modecard .desc { font-size: 11.5px; }
-  .zone { padding-block: 14px; }
-  .card { padding: 16px; }
+  #chapters { flex-wrap: wrap; row-gap: 8px; margin-top: 6px; }
+  #chapters button { padding: 6px 12px; font-size: 12.5px; }
+  .card { border-radius: 0; padding: 13px; scrollbar-width: none; }
+  .card::-webkit-scrollbar { display: none; }
+  .idle { gap: 8px; }
+  .idle h1 { font-size: 17px; margin: 0; }
+  .idle .muted { font-size: 12px; }
+  .modegrid { margin-top: 2px; gap: 8px; }
+  .modecard { padding: 10px 12px; }
+  .modecard b { font-size: 13px; }
+  .modecard .desc { font-size: 11px; }
+  .zone { padding-block: 10px; }
   .run { padding: 14px 16px; gap: 10px; }
   .runtop { flex-wrap: wrap; row-gap: 8px; }
   .runtop .left { flex: 1 1 0; min-width: 0; }
