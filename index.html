@@ -34,6 +34,7 @@
         <span class="ringtext"><b id="ringn">0</b><i id="ringtotal">/505</i></span>
       </button>
       <div class="topstats" id="topstats"></div>
+      <div class="gearwrap">
       <button class="gearbtn" id="gearbtn" aria-haspopup="true" aria-expanded="false" title="Settings">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><g stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><circle cx="10.5" cy="4" r="1.7" fill="currentColor" stroke="none"/><line x1="2" y1="8" x2="14" y2="8"/><circle cx="5.5" cy="8" r="1.7" fill="currentColor" stroke="none"/><line x1="2" y1="12" x2="14" y2="12"/><circle cx="10.5" cy="12" r="1.7" fill="currentColor" stroke="none"/></g></svg>
       </button>
@@ -84,15 +85,12 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </header>
 
-  <div id="strip" class="strip" role="region" aria-label="Chapter confidence">
-    <div class="wrap" id="strip-inner"></div>
-  </div>
-
   <main class="zone" id="zone" role="main">
-    <div class="loading">Loading practice bank…</div>
+    <div class="loading" role="status" aria-label="Loading practice bank"><span class="spinner" aria-hidden="true"></span></div>
   </main>
 
   <footer class="foot">

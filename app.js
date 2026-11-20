@@ -1,5 +1,5 @@
 /* app.js — Alberta Class 7 Practice 2026
-   One page, one viewport: chapter-confidence strip + question zone.
+   One page, one viewport: topbar + question zone; chapter confidence lives in the picker pills.
    Classic script; depends on window.DB (store.js) and window.QUESTIONS (bank). */
 (function () {
   'use strict';
@@ -121,7 +121,7 @@
     saveCurrentProfile();
     loadProfileHot(name);
     DB.putMeta('settings', S.settings);
-    renderStrip();
+    renderTop();
     withTransition(gotoIdle);
   }
   function refreshProfRow() {
@@ -152,7 +152,7 @@
   }
 
   /* ------------------------------------------------ appearance */
-  const APP_VERSION = 'v1';
+  const APP_VERSION = 'v1.1';
   const RING_C = 2 * Math.PI * 19;
   function ringInit() {
     const arc = document.getElementById('ringarc');
@@ -229,30 +229,11 @@
     if (b) setAppearance(b.dataset.appearance);
   };
 
-  function renderStrip() {
-    let weak = null;
-    const rows = CHAPTERS.map(ch => {
-      const st = chapterStats(ch.id);
-      if (!st.total) return `<span class="chip empty" aria-disabled="true" title="No questions in this chapter yet">
-        <span class="cname">${esc(ch.name)}</span> <span class="crate">—</span>
-        <span class="bar"><i style="width:0%"></i></span></span>`;
-      let cls = '';
-      if (st.pct < 0.4) { cls = 'weak'; weak = weak === null ? ch : weak; }
-      else if (st.pct < 0.7) cls = 'warn';
-      const pct = Math.round(st.pct * 100);
-      return `<button class="chip ${cls}" data-ch="${ch.id}" title="Practice ${esc(ch.name)}">
-        <span class="cname">${esc(ch.name)}</span> <span class="crate">${pct}%</span>
-        <span class="bar"><i style="width:${pct}%"></i></span></button>`;
-    }).join('');
+  function renderTop() {
     const activeRun = S.view && S.view.mode && S.view.mode !== 'idle' && !S.view.done;
     const compact = matchMedia('(max-width: 480px)').matches;
     const skipLbl = activeRun ? (S.view.mode === 'exam' ? (compact ? 'Skip' : 'Skip test') : (compact ? 'Skip' : 'Skip practice')) : null;
     const resumeLbl = S.stash ? (S.stash.mode === 'exam' ? (compact ? 'Resume' : 'Resume test') : (compact ? 'Resume' : 'Resume practice')) : null;
-    const stripInner = $('#strip-inner');
-    const scrollLeft = stripInner.scrollLeft;          // keep the user's horizontal position on re-renders
-    stripInner.innerHTML = rows +
-      `<button class="chip drill" data-act="weakest"><span class="cname">Drill weakest</span><span class="bar"><i style="width:100%"></i></span></button>`;
-    stripInner.scrollLeft = scrollLeft;
     updateRing(activeRun);
     $('#topstats').innerHTML =
       (skipLbl ? `<button class="runpill" data-act="skip">${esc(skipLbl)}</button>` : '') +
@@ -277,11 +258,6 @@
       }
       return;
     }
-    const chip = e.target.closest('.chip');
-    if (!chip) return;
-    if (chip.dataset.act === 'weakest') { startWeakest(); return; }
-    const ch = +chip.dataset.ch;
-    if (ch) startChapter(ch);
   });
 
   /* ------------------------------------------------ view rendering */
@@ -341,7 +317,7 @@
         S.stash = st.stash ? JSON.parse(JSON.stringify(st.stash)) : null;
         DB.putMeta('profiles', profilesReg);
         refreshProfRow();
-        renderStrip();
+        renderTop();
         gotoIdle();
       });
     };
@@ -446,7 +422,7 @@
     });
     bulkPersist();
     saveCurrentProfile();
-    renderStrip();
+    renderTop();
   }
   function bulkPersist() {
     if (window.DB && DB.bulkPutState) DB.bulkPutState([...S.P.values()]);
@@ -478,7 +454,7 @@
   function gotoIdle() {
     if (S.view && S.view.timer) clearInterval(S.view.timer);
     S.view = { mode: 'idle' }; document.title = 'Alberta Class 7 Practice 2026';
-    renderStrip();
+    renderTop();
     const weakCh = weakestChapter();
     const reviewCount = countReview();
     let shareBody = '', impBtn = '';
@@ -495,16 +471,19 @@
       </div>` : '';
     zone(`<section class="card wrap idle" aria-label="Overview">
       ${banner}
-      <h1>Practice for your Class 7 knowledge test</h1>
-      <div class="muted">Right answers raise the chapter confidence. Miss a mastered question and it drops back to review, so weak chapters surface.</div>
       <div class="modegrid">
         <button class="modecard" id="m-exam"><b>Exam simulation</b><span class="desc">${S.settings.examLen} random questions, ${S.settings.examMinutes} minute soft timer, pass at ${Math.round(S.settings.passMark * 100)}%.</span></button>
         <button class="modecard" id="m-ch"><b>Chapter test</b><span class="desc">Instant feedback with explanations and guide citations.</span></button>
         <button class="modecard" id="m-review" ${reviewCount ? '' : 'disabled'}><b>Review (${reviewCount})</b><span class="desc">Repeated practice on missed and flagged questions.</span></button>
       </div>
       <div class="muted" style="margin-bottom:2px">Pick a chapter to practice:</div>
-      <div id="chapters">${CHAPTERS.map(c => `<button data-chapter="${c.id}">${esc(c.name)}</button>`).join('')}</div>
-      <div class="muted">Weakest chapter${weakCh ? ': <b>' + esc(weakCh.name) + '</b>' : ': answer more questions to reveal it'}.</div>
+      <div id="chapters">${CHAPTERS.map(c => {
+        const st = chapterStats(c.id);
+        const cls = !st.total ? '' : (st.pct === 1 ? 'ok' : (st.pct < 0.4 ? 'weak' : (st.pct < 0.7 ? 'warn' : '')));
+        const label = st.total ? Math.round(st.pct * 100) + '%' : '—';
+        const isWeak = weakCh && c.id === weakCh.id;
+        return `<button data-chapter="${c.id}"${isWeak ? ` class="isweak" title="Lowest confidence here — a good next step"` : ''}><span>${esc(c.name)}</span><span class="pctp ${cls}">${label}</span></button>`;
+      }).join('')}</div>
     </section>`);
     $('#m-exam').onclick = startExam;
     $('#m-ch').onclick = () => startChapterWeakestOr2();
@@ -546,7 +525,6 @@
     S.view = { mode: 'chapter', chapter: ch, queue, idx: 0, correct: 0, answered: 0 };
     withTransition(renderQuestion);
   }
-  function startWeakest() { const w = weakestChapter(); if (w) startChapter(w.id); }
 
   /* ------------------------------------------------ review */
   function startReview() {
@@ -663,7 +641,7 @@
       bb.onclick = () => gotoQuestion(v.idx - 1);
     }
     opts.forEach(o => { if (!answered) o.onclick = () => answer(+o.dataset.i, opts, letters); });
-    renderStrip();
+    renderTop();
     renderTally();
   }
   function gotoQuestion(k) { S.view.idx = k; withTransition(renderQuestion); }
@@ -686,7 +664,7 @@
     const v = S.stash; S.stash = null;
     S.view = v;
     if (v.mode === 'exam') startExamTimer();
-    renderStrip();
+    renderTop();
     withTransition(renderQuestion);
   }
   const isReview = v => v.mode === 'review';
@@ -871,10 +849,8 @@
         else { r.status = 'review'; persist(q.id); fb = `<div class="feedback no"><b>Wrong — added to review</b> ${esc(q.explanation)}${src(q)}</div>`; }
       }
       persist(q.id);
-      renderStrip();
+      renderTop();
       renderTally();
-      const chipEl = document.querySelector(`.chip[data-ch="${q.chapter}"]`);
-      if (chipEl && !noMotion.matches) { chipEl.classList.add('tick'); setTimeout(() => chipEl.classList.remove('tick'), 650); }
     }
 
     $('#fb').innerHTML = fb;
@@ -906,7 +882,7 @@
   function showChapterSummary() {
     const v = S.view;
     v.done = true;
-    renderStrip();
+    renderTop();
     const pct = v.answered ? Math.round(v.correct / v.answered * 100) : 0;
     const label = v.mode === 'review' ? 'Review' : esc(chapterName(v.chapter));
     zone(`<section class="card wrap results" aria-label="Results">
@@ -929,8 +905,8 @@
     const pass = pct / 100 >= S.settings.passMark;
     const session = { mode: 'exam', date: new Date().toISOString(), score: pct, correct: v.correct, total: v.queue.length, passed: pass, seconds: S.settings.examMinutes * 60 - Date.now() / 1000 };
     session.seconds = Math.round(session.seconds);
-    DB.addSession(session).then(() => { S.sessions.push(session); renderStrip(); });
-    renderStrip();
+    DB.addSession(session).then(() => { S.sessions.push(session); renderTop(); });
+    renderTop();
     const skipped = v.queue.filter(id => !v.answers[id]);
     skipped.forEach(id => { const r = rec(id); if (r.status === 'unseen') { r.status = 'review'; persist(id); } });
     const missed = v.queue.map(id => ({ q: S.byId.get(id), a: v.answers[id] })).filter(x => !x.a || !x.a.correct);
