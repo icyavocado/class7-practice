@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-type="software">
+<head>
+<meta charset="utf-8">
+<meta name="page-type" content="software">
+  <meta name="site-kind" content="software">
+  <meta name="description" content="Practice tests for the Alberta Class 7 knowledge test, based on the official Driver's Guide (Spring 2026). Chapter confidence shows your weak spots.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta property="og:title" content="Alberta Class 7 practice tests">
+  <meta property="og:description" content="Practice tests for the Alberta Class 7 knowledge test, from the official Driver's Guide (Spring 2026). Chapter confidence shows your weak spots.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#eef0f3" media="(prefers-color-scheme: light)">
+  <meta property="og:title" content="Alberta Class 7 practice tests">
+  <meta property="og:description" content="Practice tests for the Alberta Class 7 knowledge test, from the official Driver's Guide (Spring 2026). Chapter confidence shows your weak spots.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<title>Alberta Class 7 practice tests | Driver's Guide 2026</title>
+<link rel="preload" as="font" type="font/woff2" href="geist-var.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="geist-mono-var.woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#zone">Skip to the practice zone</a>
+  <header class="topbar">
+    <div class="wrap topbar-wrap">
+      <div class="brand">
+        <span class="brand-main">Alberta Class 7 Practice 2026</span>
+        <span class="brand-sub">based on the official Driver’s Guide — Cars &amp; Light Trucks (Spring 2026)</span>
+      </div>
+      <div class="topstats" id="topstats"></div>
+    </div>
+  </header>
+
+  <div id="strip" class="strip" role="region" aria-label="Chapter confidence">
+    <div class="wrap" id="strip-inner"></div>
+  </div>
+
+  <main class="zone" id="zone" role="main">
+    <div class="loading">Loading practice bank…</div>
+  </main>
+
+  <div class="dbwarn" id="dbwarn" hidden>
+    ⚠ Persistent storage unavailable — your progress lasts for this session only.
+  </div>
+
+  <script src="store.js"></script>
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+[
+  {
+    "check": "hero-fold",
+    "target": "main#zone > section.card.wrap",
+    "reason": "persistent tool screen, not a landing hero; the confidence strip above it is app chrome and must stay"
+  },
+  {
+    "check": "section-height",
+    "target": "main#zone > section.card.wrap",
+    "reason": "app views fill content height and swap in place; landing one-to-two screen section heights do not apply"
+  },
+  {
+    "check": "screen-short",
+    "target": "section.card.wrap",
+    "reason": "idle state is intentionally compact so the question state can grow; nothing is hidden"
+  },
+  {
+    "check": "fold-action",
+    "target": "div#chapters",
+    "reason": "chapter picking is secondary entry; primary actions sit in the mode cards above"
+  },
+  {
+    "check": "container-edges",
+    "target": "header.topbar",
+    "reason": "single-screen tool app: full-width chrome bands with one centered working card are the intended layout"
+  }
+]

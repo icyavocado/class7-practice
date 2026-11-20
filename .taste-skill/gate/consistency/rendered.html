@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en" data-type="software"><head>
+<meta charset="utf-8">
+<meta name="page-type" content="software">
+  <meta name="site-kind" content="software">
+  <meta name="description" content="Practice tests for the Alberta Class 7 knowledge test, based on the official Driver's Guide (Spring 2026). Chapter confidence shows your weak spots.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta property="og:title" content="Alberta Class 7 practice tests">
+  <meta property="og:description" content="Practice tests for the Alberta Class 7 knowledge test, from the official Driver's Guide (Spring 2026). Chapter confidence shows your weak spots.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#eef0f3" media="(prefers-color-scheme: light)">
+  <meta property="og:title" content="Alberta Class 7 practice tests">
+  <meta property="og:description" content="Practice tests for the Alberta Class 7 knowledge test, from the official Driver's Guide (Spring 2026). Chapter confidence shows your weak spots.">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<title>Alberta Class 7 Practice 2026</title>
+<link rel="preload" as="font" type="font/woff2" href="geist-var.woff2" crossorigin="">
+  <link rel="preload" as="font" type="font/woff2" href="geist-mono-var.woff2" crossorigin="">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#zone">Skip to the practice zone</a>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-main">Alberta Class 7 Practice 2026</span>
+      <span class="brand-sub">based on the official Driver’s Guide — Cars &amp; Light Trucks (Spring 2026)</span>
+    </div>
+    <div class="topstats" id="topstats"><span class="pill">Tests: <b>0</b></span><span class="pill ok">Questions seen: <b>0/349</b></span></div>
+  </header>
+
+  <div id="strip" class="strip" role="region" aria-label="Chapter confidence">
+    <div class="wrap" id="strip-inner"><button class="chip weak" data-ch="1" title="Practice Licensing &amp; GDL">
+        <span class="cname">Licensing &amp; GDL</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><button class="chip weak" data-ch="2" title="Practice Traffic Control">
+        <span class="cname">Traffic Control</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><button class="chip weak" data-ch="3" title="Practice Basics of Driving">
+        <span class="cname">Basics of Driving</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><button class="chip weak" data-ch="4" title="Practice Intersections &amp; Turns">
+        <span class="cname">Intersections &amp; Turns</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><button class="chip weak" data-ch="5" title="Practice Highways &amp; Freeways">
+        <span class="cname">Highways &amp; Freeways</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><button class="chip weak" data-ch="6" title="Practice Emergencies">
+        <span class="cname">Emergencies</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><span class="chip empty" aria-disabled="true" title="No questions in this chapter yet">
+        <span class="cname">Responsible Driving</span> <span class="crate">—</span>
+        <span class="bar"><i style="width:0%"></i></span></span><span class="chip empty" aria-disabled="true" title="No questions in this chapter yet">
+        <span class="cname">Sharing the Road</span> <span class="crate">—</span>
+        <span class="bar"><i style="width:0%"></i></span></span><span class="chip empty" aria-disabled="true" title="No questions in this chapter yet">
+        <span class="cname">Driving within the Law</span> <span class="crate">—</span>
+        <span class="bar"><i style="width:0%"></i></span></span><button class="chip weak" data-ch="10" title="Practice Towing a Trailer">
+        <span class="cname">Towing a Trailer</span> <span class="crate">0%</span>
+        <span class="bar"><i style="width:0%"></i></span></button><button class="chip drill" data-act="weakest"><span class="cname">Drill weakest</span><span class="bar"><i style="width:100%"></i></span></button></div>
+  </div>
+
+  <main class="zone" id="zone" role="main"><section class="card wrap idle" aria-label="Overview">
+      <h1>Practice for your Class 7 knowledge test</h1>
+      <div class="muted">Right answers raise the chapter confidence. Miss a mastered question and it drops back to review, so weak chapters surface.</div>
+      <div class="modegrid">
+        <button class="modecard" id="m-exam"><b>Exam simulation</b><span class="desc">30 random questions, 60 minute soft timer, pass at 80%.</span></button>
+        <button class="modecard" id="m-ch"><b>Chapter test</b><span class="desc">Instant feedback with explanations and guide citations.</span></button>
+        <button class="modecard" id="m-review" disabled=""><b>Review (0)</b><span class="desc">Repeated practice on missed and flagged questions.</span></button>
+      </div>
+      <div class="muted" style="margin-bottom:2px">Pick a chapter to practice:</div>
+      <div id="chapters"><button data-chapter="1">Licensing &amp; GDL</button><button data-chapter="2">Traffic Control</button><button data-chapter="3">Basics of Driving</button><button data-chapter="4">Intersections &amp; Turns</button><button data-chapter="5">Highways &amp; Freeways</button><button data-chapter="6">Emergencies</button><button data-chapter="7">Responsible Driving</button><button data-chapter="8">Sharing the Road</button><button data-chapter="9">Driving within the Law</button><button data-chapter="10">Towing a Trailer</button></div>
+      <div class="muted">Weakest chapter: <b>Licensing &amp; GDL</b>.</div>
+    </section></main>
+
+  <div class="dbwarn" id="dbwarn" hidden="">
+    ⚠ Persistent storage unavailable — your progress lasts for this session only.
+  </div>
+
+  <script src="store.js"></script>
+  <script src="questions.js"></script>
+  <script src="app.js"></script>
+
+
+</body></html>

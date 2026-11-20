@@ -1,0 +1,805 @@
+{
+ "start": "2026-11-20T10:31:47.662Z",
+ "round": 3,
+ "idle": 0,
+ "errors": 0,
+ "status": "open",
+ "history": [
+  {
+   "at": "2026-11-20T10:32:55.181Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 25,
+   "round": 1,
+   "reused": false,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:34:11.854Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 16,
+   "round": 2,
+   "reused": false,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:34:17.166Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 16,
+   "round": 2,
+   "reused": true,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:34:17.269Z",
+   "mode": "manual",
+   "status": "fail",
+   "fails": 16,
+   "round": 2,
+   "reused": true,
+   "stopHookActive": false
+  },
+  {
+   "at": "2026-11-20T10:35:31.891Z",
+   "mode": "manual",
+   "status": "open",
+   "fails": 18,
+   "round": 3,
+   "reused": false,
+   "stopHookActive": false
+  }
+ ],
+ "max": 3,
+ "marker": {
+  "page": "index.html",
+  "url": null,
+  "root": null,
+  "kind": "software",
+  "category": "Alberta Class 7 driving test practice",
+  "primary": "Practice questions",
+  "rounds": 3,
+  "start": "2026-11-20T10:31:47.662Z",
+  "by": "gate.mjs --start"
+ },
+ "manual": true,
+ "roundKey": "4f9fccd31128c0bc:454be3b4",
+ "roundFree": false,
+ "idleFree": false,
+ "blockKey": null,
+ "fp": "4f9fccd31128c0bc",
+ "page": "index.html",
+ "found": {
+  "fails": [
+   {
+    "check": "text-only",
+    "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+    "msg": "the closing section is only text: no picture, icon, mock or effect in it",
+    "fix": "give the section a visual: a photograph that fits, the real icons, or a UI fragment on a ground",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "text-only"
+    ],
+    "wheres": [
+     "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+    ]
+   },
+   {
+    "check": "card-visual",
+    "where": "main#zone > section.card.wrap > div.modegrid \"Exam simulation 30 random questions, 60 \"",
+    "msg": "3 cards hold only text: no picture, icon, UI fragment or effect in any of them",
+    "fix": "give the cards a visual: an inset panel with a UI fragment, a photograph or real icons",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "card-visual"
+    ],
+    "wheres": [
+     "main#zone > section.card.wrap > div.modegrid \"Exam simulation 30 random questions, 60 \""
+    ]
+   },
+   {
+    "check": "button-styles",
+    "where": "(one screen)",
+    "msg": "3 button styles on one screen: pill, fill #ffffff, outline #d8dbdf (\"Licensing & GDL\"); soft, fill #ffffff, outline #b42319 (\"Licensing & GDL 0%\"); soft, fill #1f2de6, outline #1f2de6 (\"Drill weakest\"); the odd one out: \"Drill weakest\"",
+    "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "button-styles"
+    ],
+    "wheres": [
+     "(one screen)"
+    ]
+   },
+   {
+    "check": "button-styles",
+    "where": "(the page)",
+    "msg": "3 button styles on the page: soft, fill #ffffff, outline #b42319 x7 (\"Licensing & GDL 0%\"); soft, fill #1f2de6, outline #1f2de6 x1 (\"Drill weakest\"); pill, fill #ffffff, outline #d8dbdf x10 (\"Licensing & GDL\")",
+    "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "button-styles"
+    ],
+    "wheres": [
+     "(the page)"
+    ]
+   },
+   {
+    "check": "copy-actions",
+    "where": "div#chapters > button:nth-of-type(3) \"Basics of Driving\"",
+    "msg": "10 actions in the hero (\"Licensing & GDL\", \"Traffic Control\", \"Basics of Driving\", \"Intersections & Turns\", \"Highways & Freeways\", \"Emergencies\", \"Responsible Driving\", \"Sharing the Road\", \"Driving within the Law\", \"Towing a Trailer\"); at most 2",
+    "fix": "few actions, one wording: at most 2 in the hero, the main action word for word in nav, hero and close",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "copy-actions"
+    ],
+    "wheres": [
+     "div#chapters > button:nth-of-type(3) \"Basics of Driving\""
+    ]
+   },
+   {
+    "check": "text-contrast",
+    "where": "main#zone > section.card.wrap > div.muted:nth-of-type(1) \"Right answers raise the chapter confiden\"",
+    "msg": "body text in #5d6470 on #ffffff reads 5.96:1 (needs 7:1)",
+    "fix": "body text in the ink at 7:1 or more; grey (4.5:1 or more) only for captions and labels",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "text-contrast"
+    ],
+    "wheres": [
+     "main#zone > section.card.wrap > div.muted:nth-of-type(1) \"Right answers raise the chapter confiden\""
+    ]
+   },
+   {
+    "check": "moment-none",
+    "where": "(the page)",
+    "msg": "a software page (--type) deals no moment: every kind carries one, two on a long page (moments.md)",
+    "fix": "deal one (moments.mjs pick --page software) and mount it in its own section",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "moment-none"
+    ],
+    "wheres": [
+     "(the page)"
+    ]
+   },
+   {
+    "check": "hero-screen",
+    "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+    "msg": "the hero ends at 880px on a 900px screen, 20px above the fold: it ends at the fold, 1px either way (SR-1)",
+    "fix": "make the hero exactly one screen (height: 100svh, its content fitted inside), never taller or shorter",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "hero-screen"
+    ],
+    "wheres": [
+     "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+    ]
+   },
+   {
+    "check": "section-height",
+    "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+    "msg": "the section starts at 207px, 207px below the screen grid (0 x 900px): sections start on whole screens (SR-2)",
+    "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "section-height"
+    ],
+    "wheres": [
+     "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "header.topbar \"Alberta Class 7 Practice 2026 based on t\"",
+    "msg": "the nav's content runs 0px from the left and 1050px from the right (read from its outermost blocks: no .wrap): the page's container starts at 317px; 0 and 1050px are not one margin; the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+    "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "header.topbar \"Alberta Class 7 Practice 2026 based on t\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+    "msg": "the content of section 1 runs 317px from the left and 317px from the right (read from its outermost blocks: no .wrap): the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+    "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "a.skip \"Skip to the practice zone\"",
+    "msg": "a <a> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (SR-6)",
+    "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "a.skip \"Skip to the practice zone\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "div#strip \"Licensing & GDL 0% Traffic Control 0% Ba\"",
+    "msg": "a <div> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (and 1 more like it: \"Practice for your Class \") (SR-6)",
+    "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "div#strip \"Licensing & GDL 0% Traffic Control 0% Ba\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "header.topbar > div.brand > span.brand-main \"Alberta Class 7 Practice 2026\"",
+    "msg": "\"Alberta Class 7 Practice 2026\" runs 0-210px, outside the container lines of the nav at 317-1123px: full width is for background layers and grounds only (SR-6)",
+    "fix": "keep it inside the container lines (.wrap): full width is for background layers and grounds only",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "header.topbar > div.brand > span.brand-main \"Alberta Class 7 Practice 2026\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "header.topbar > div.brand > span.brand-sub \"based on the official Driver’s Guide — C\"",
+    "msg": "\"based on the official Driver’s G\" runs 0-390px, outside the container lines of the nav at 317-1123px: full width is for background layers and grounds only (SR-6)",
+    "fix": "keep it inside the container lines (.wrap): full width is for background layers and grounds only",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "header.topbar > div.brand > span.brand-sub \"based on the official Driver’s Guide — C\""
+    ]
+   },
+   {
+    "check": "container-edges",
+    "where": "div#topstats > span.pill:nth-of-type(1) \"Tests: 0\"",
+    "msg": "a box runs 0-80px, outside the container lines of the nav at 317-1123px: full width is for background layers and grounds only (and 5 more like it: \"Tests: 0\", \"0\", \"Questions seen: 0/349\") (SR-6)",
+    "fix": "keep it inside the container lines (.wrap): full width is for background layers and grounds only",
+    "widths": [
+     1440
+    ],
+    "from": "consistency",
+    "ids": [
+     "container-edges"
+    ],
+    "wheres": [
+     "div#topstats > span.pill:nth-of-type(1) \"Tests: 0\""
+    ]
+   },
+   {
+    "check": "button-styles",
+    "where": "div#strip-inner > button.chip.weak:nth-of-type(7) \"Towing a Trailer 0%\"",
+    "msg": "a button pair at two heights: \"Towing a Trailer 0%\" 64px beside \"Drill weakest\" 44px",
+    "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+    "widths": [
+     390
+    ],
+    "from": "consistency",
+    "ids": [
+     "button-styles"
+    ],
+    "wheres": [
+     "div#strip-inner > button.chip.weak:nth-of-type(7) \"Towing a Trailer 0%\""
+    ]
+   },
+   {
+    "check": "spill",
+    "where": "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\"",
+    "msg": "x 290 to 1150, the page runs 316 to 1124",
+    "fix": "keep it inside the .wrap; nothing past the right edge",
+    "widths": [
+     1440
+    ],
+    "from": "layout",
+    "ids": [
+     "spill"
+    ],
+    "wheres": [
+     "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\""
+    ]
+   },
+   {
+    "check": "screen-short",
+    "where": "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\"",
+    "msg": "673px tall; one screen under the nav is 900px",
+    "fix": "make the section one full screen (--h: 1, layout-v4.md section 2)",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "screen-short"
+    ],
+    "wheres": [
+     "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\""
+    ]
+   },
+   {
+    "check": "hero-fold",
+    "where": "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\"",
+    "msg": "starts at y 207, not under the nav",
+    "fix": "the hero fills the first screen alone, its button inside it",
+    "widths": [
+     1440,
+     390
+    ],
+    "from": "layout",
+    "ids": [
+     "hero-fold"
+    ],
+    "wheres": [
+     "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\""
+    ]
+   }
+  ],
+  "warns": [
+   {
+    "check": "copy-buttons",
+    "where": "div#strip-inner > button.chip.weak:nth-of-type(1) \"Licensing & GDL 0%\"",
+    "msg": "\"Licensing & GDL 0%\" does not start with a verb (book, buy, try, start, get, see...) (and 13 more like it: \"Traffic Control 0%\", \"Intersections & Turns 0%\", \"Highways & Freeways 0%\", \"Emergencies 0%\", ...)",
+    "fix": "label buttons with a verb and what the visitor gets (\"Book a room\", \"Start free trial\")",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "copy-actions",
+    "where": "(the page)",
+    "msg": "18 different button labels on the page (at most 10)",
+    "fix": "few actions, one wording: at most 2 in the hero, the main action word for word in nav, hero and close",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "copy-length",
+    "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+    "msg": "the page; 90 words a screen across the page (90 words in 1 screens): a tech page says it in about 80 or fewer",
+    "fix": "cut every section to its heading, one line and the product UI: the UI says the rest; no second paragraph, no list of feature sentences",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "empty-area",
+    "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+    "msg": "46% of the section is empty: 272px under its last (div.muted:nth-of-type(5)), 4% beside content that covers under half the container, in its 629px of rows (WARN over 35%, FAIL over 50%)",
+    "fix": "fill the section: a picture or a second column beside the words, or more of its own content; the section stays one or two screens tall (T-height)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "share-meta",
+    "where": "head",
+    "msg": "the head lacks og:image, an icon: a shared link shows no picture or title of its own",
+    "fix": "copy the head block of starter.html: og tags, twitter:card, the icon and theme-color (references/system.md, Head)",
+    "widths": [
+     1440
+    ],
+    "from": "consistency"
+   },
+   {
+    "check": "stranded-action",
+    "where": "div#chapters > button:nth-of-type(1) \"Licensing & GDL\"",
+    "msg": "stands 347px down from the nearest text of its block (\"Practice for your Class 7 know\") (and 1 more like it: \"Traffic Control\")",
+    "fix": "put the button under or beside the text it belongs to",
+    "widths": [
+     390
+    ],
+    "from": "consistency"
+   }
+  ],
+  "crashed": [],
+  "seconds": {
+   "consistency": 50,
+   "layout": 13
+  }
+ },
+ "open": [
+  {
+   "check": "text-only",
+   "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+   "msg": "the closing section is only text: no picture, icon, mock or effect in it",
+   "fix": "give the section a visual: a photograph that fits, the real icons, or a UI fragment on a ground",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "text-only"
+   ],
+   "wheres": [
+    "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+   ]
+  },
+  {
+   "check": "card-visual",
+   "where": "main#zone > section.card.wrap > div.modegrid \"Exam simulation 30 random questions, 60 \"",
+   "msg": "3 cards hold only text: no picture, icon, UI fragment or effect in any of them",
+   "fix": "give the cards a visual: an inset panel with a UI fragment, a photograph or real icons",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "card-visual"
+   ],
+   "wheres": [
+    "main#zone > section.card.wrap > div.modegrid \"Exam simulation 30 random questions, 60 \""
+   ]
+  },
+  {
+   "check": "button-styles",
+   "where": "(one screen)",
+   "msg": "3 button styles on one screen: pill, fill #ffffff, outline #d8dbdf (\"Licensing & GDL\"); soft, fill #ffffff, outline #b42319 (\"Licensing & GDL 0%\"); soft, fill #1f2de6, outline #1f2de6 (\"Drill weakest\"); the odd one out: \"Drill weakest\"",
+   "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "button-styles"
+   ],
+   "wheres": [
+    "(one screen)"
+   ]
+  },
+  {
+   "check": "button-styles",
+   "where": "(the page)",
+   "msg": "3 button styles on the page: soft, fill #ffffff, outline #b42319 x7 (\"Licensing & GDL 0%\"); soft, fill #1f2de6, outline #1f2de6 x1 (\"Drill weakest\"); pill, fill #ffffff, outline #d8dbdf x10 (\"Licensing & GDL\")",
+   "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "button-styles"
+   ],
+   "wheres": [
+    "(the page)"
+   ]
+  },
+  {
+   "check": "copy-actions",
+   "where": "div#chapters > button:nth-of-type(3) \"Basics of Driving\"",
+   "msg": "10 actions in the hero (\"Licensing & GDL\", \"Traffic Control\", \"Basics of Driving\", \"Intersections & Turns\", \"Highways & Freeways\", \"Emergencies\", \"Responsible Driving\", \"Sharing the Road\", \"Driving within the Law\", \"Towing a Trailer\"); at most 2",
+   "fix": "few actions, one wording: at most 2 in the hero, the main action word for word in nav, hero and close",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "copy-actions"
+   ],
+   "wheres": [
+    "div#chapters > button:nth-of-type(3) \"Basics of Driving\""
+   ]
+  },
+  {
+   "check": "text-contrast",
+   "where": "main#zone > section.card.wrap > div.muted:nth-of-type(1) \"Right answers raise the chapter confiden\"",
+   "msg": "body text in #5d6470 on #ffffff reads 5.96:1 (needs 7:1)",
+   "fix": "body text in the ink at 7:1 or more; grey (4.5:1 or more) only for captions and labels",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "text-contrast"
+   ],
+   "wheres": [
+    "main#zone > section.card.wrap > div.muted:nth-of-type(1) \"Right answers raise the chapter confiden\""
+   ]
+  },
+  {
+   "check": "moment-none",
+   "where": "(the page)",
+   "msg": "a software page (--type) deals no moment: every kind carries one, two on a long page (moments.md)",
+   "fix": "deal one (moments.mjs pick --page software) and mount it in its own section",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "moment-none"
+   ],
+   "wheres": [
+    "(the page)"
+   ]
+  },
+  {
+   "check": "hero-screen",
+   "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+   "msg": "the hero ends at 880px on a 900px screen, 20px above the fold: it ends at the fold, 1px either way (SR-1)",
+   "fix": "make the hero exactly one screen (height: 100svh, its content fitted inside), never taller or shorter",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "hero-screen"
+   ],
+   "wheres": [
+    "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "header.topbar \"Alberta Class 7 Practice 2026 based on t\"",
+   "msg": "the nav's content runs 0px from the left and 1050px from the right (read from its outermost blocks: no .wrap): the page's container starts at 317px; 0 and 1050px are not one margin; the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+   "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "header.topbar \"Alberta Class 7 Practice 2026 based on t\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+   "msg": "the content of section 1 runs 317px from the left and 317px from the right (read from its outermost blocks: no .wrap): the margin is 64-120px at 1440px (one container, equal margins, 2px either way) (SR-6)",
+   "fix": "use one container on every section and the nav (.wrap): one margin left and right, 64-120px on a desktop, 16-24px on a phone",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "a.skip \"Skip to the practice zone\"",
+   "msg": "a <a> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (SR-6)",
+   "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "a.skip \"Skip to the practice zone\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "div#strip \"Licensing & GDL 0% Traffic Control 0% Ba\"",
+   "msg": "a <div> at the top of the page, outside header.nav, main, footer.closing and nav.actionbar (and 1 more like it: \"Practice for your Class \") (SR-6)",
+   "fix": "build the page as header.nav, a main of sections (each one in-flow .wrap plus background layers) and footer.closing",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "div#strip \"Licensing & GDL 0% Traffic Control 0% Ba\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "header.topbar > div.brand > span.brand-main \"Alberta Class 7 Practice 2026\"",
+   "msg": "\"Alberta Class 7 Practice 2026\" runs 0-210px, outside the container lines of the nav at 317-1123px: full width is for background layers and grounds only (SR-6)",
+   "fix": "keep it inside the container lines (.wrap): full width is for background layers and grounds only",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "header.topbar > div.brand > span.brand-main \"Alberta Class 7 Practice 2026\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "header.topbar > div.brand > span.brand-sub \"based on the official Driver’s Guide — C\"",
+   "msg": "\"based on the official Driver’s G\" runs 0-390px, outside the container lines of the nav at 317-1123px: full width is for background layers and grounds only (SR-6)",
+   "fix": "keep it inside the container lines (.wrap): full width is for background layers and grounds only",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "header.topbar > div.brand > span.brand-sub \"based on the official Driver’s Guide — C\""
+   ]
+  },
+  {
+   "check": "container-edges",
+   "where": "div#topstats > span.pill:nth-of-type(1) \"Tests: 0\"",
+   "msg": "a box runs 0-80px, outside the container lines of the nav at 317-1123px: full width is for background layers and grounds only (and 5 more like it: \"Tests: 0\", \"0\", \"Questions seen: 0/349\") (SR-6)",
+   "fix": "keep it inside the container lines (.wrap): full width is for background layers and grounds only",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "container-edges"
+   ],
+   "wheres": [
+    "div#topstats > span.pill:nth-of-type(1) \"Tests: 0\""
+   ]
+  },
+  {
+   "check": "button-styles",
+   "where": "div#strip-inner > button.chip.weak:nth-of-type(7) \"Towing a Trailer 0%\"",
+   "msg": "a button pair at two heights: \"Towing a Trailer 0%\" 64px beside \"Drill weakest\" 44px",
+   "fix": "one primary and one secondary button: one shape, one height per size, one label size",
+   "widths": [
+    390
+   ],
+   "from": "consistency",
+   "ids": [
+    "button-styles"
+   ],
+   "wheres": [
+    "div#strip-inner > button.chip.weak:nth-of-type(7) \"Towing a Trailer 0%\""
+   ]
+  },
+  {
+   "check": "spill",
+   "where": "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\"",
+   "msg": "x 290 to 1150, the page runs 316 to 1124",
+   "fix": "keep it inside the .wrap; nothing past the right edge",
+   "widths": [
+    1440
+   ],
+   "from": "layout",
+   "ids": [
+    "spill"
+   ],
+   "wheres": [
+    "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\""
+   ]
+  },
+  {
+   "check": "hero-fold",
+   "where": "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\"",
+   "msg": "starts at y 207, not under the nav",
+   "fix": "the hero fills the first screen alone, its button inside it",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "hero-fold"
+   ],
+   "wheres": [
+    "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\""
+   ]
+  }
+ ],
+ "waived": [
+  {
+   "check": "section-height",
+   "where": "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\"",
+   "msg": "the section starts at 207px, 207px below the screen grid (0 x 900px): sections start on whole screens (SR-2)",
+   "fix": "make every section above it exactly one or two screens tall, so this one starts on a whole screen",
+   "widths": [
+    1440
+   ],
+   "from": "consistency",
+   "ids": [
+    "section-height"
+   ],
+   "wheres": [
+    "main#zone > section.card.wrap \"Practice for your Class 7 knowledge test\""
+   ],
+   "reason": "app views fill content height and swap in place; landing one-to-two screen section heights do not apply"
+  },
+  {
+   "check": "screen-short",
+   "where": "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\"",
+   "msg": "673px tall; one screen under the nav is 900px",
+   "fix": "make the section one full screen (--h: 1, layout-v4.md section 2)",
+   "widths": [
+    1440,
+    390
+   ],
+   "from": "layout",
+   "ids": [
+    "screen-short"
+   ],
+   "wheres": [
+    "section.card.wrap section.card.wrap \"Practice for your Class 7 knowle\""
+   ],
+   "reason": "idle state is intentionally compact so the question state can grow; nothing is hidden"
+  }
+ ],
+ "warnCount": 6,
+ "at": "2026-11-20T10:35:31.892Z",
+ "openTold": true
+}

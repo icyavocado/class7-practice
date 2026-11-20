@@ -1,0 +1,5 @@
+node_modules/
+*.pyc
+.DS_Store
+**/.taste-skill/chrome-check/
+shots/

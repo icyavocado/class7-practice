@@ -1,0 +1,11 @@
+{
+ "page": "index.html",
+ "url": null,
+ "root": null,
+ "kind": "software",
+ "category": "Alberta Class 7 driving test practice",
+ "primary": "Practice questions",
+ "rounds": 3,
+ "start": "2026-11-20T10:31:47.662Z",
+ "by": "gate.mjs --start"
+}
