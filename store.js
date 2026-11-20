@@ -106,5 +106,16 @@
         t.onerror = function () { reject(t.error); };
       });
     },
+    clearProgressStores: function () {         // wipe state + sessions only (profiles registry survives)
+      mem.state.clear(); mem.sessions.length = 0;
+      if (fallback || !db) return Promise.resolve();
+      return new Promise(function (resolve, reject) {
+        const t = db.transaction(['state', 'sessions'], 'readwrite');
+        t.objectStore('state').clear();
+        t.objectStore('sessions').clear();
+        t.oncomplete = function () { resolve(); };
+        t.onerror = function () { reject(t.error); };
+      });
+    },
   };
 })();

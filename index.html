@@ -20,7 +20,7 @@
 <title>Alberta Class 7 practice tests | Driver's Guide 2026</title>
 <link rel="preload" as="font" type="font/woff2" href="geist-var.woff2" crossorigin>
   <link rel="preload" as="font" type="font/woff2" href="geist-mono-var.woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css">
+  <script>document.write('<link rel="stylesheet" href="styles.css?v=' + Date.now() + '">');</script>
 </head>
 <body>
   <a class="skip" href="#zone">Skip to the practice zone</a>
@@ -38,6 +38,15 @@
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><g stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><circle cx="10.5" cy="4" r="1.7" fill="currentColor" stroke="none"/><line x1="2" y1="8" x2="14" y2="8"/><circle cx="5.5" cy="8" r="1.7" fill="currentColor" stroke="none"/><line x1="2" y1="12" x2="14" y2="12"/><circle cx="10.5" cy="12" r="1.7" fill="currentColor" stroke="none"/></g></svg>
       </button>
       <div class="settings" id="settings" hidden>
+        <div class="setrow">
+          <span class="setlabel">Profile</span>
+          <div class="profrow">
+            <select id="profpick" class="profpick" title="Switch profile"></select>
+            <button class="profbtn" id="profnew" title="New profile">+</button>
+            <button class="profbtn" id="profrn" title="Rename this profile">✎</button>
+            <button class="profbtn" id="profdel" title="Delete this profile">✕</button>
+          </div>
+        </div>
         <div class="setrow setcol">
           <span class="setlabel">Appearance</span>
           <div class="segmented" id="appearpick">
@@ -50,6 +59,30 @@
         <div class="setrow stat"><span class="setlabel">Tests</span><b id="testsstat">0</b></div>
         <div class="setsep"></div>
         <div class="setrow"><button class="resetpill" id="resetbtn">Reset progress</button></div>
+        <div class="setsep"></div>
+        <div class="setrow setcol">
+          <div class="sharebtns">
+            <button class="runpill" id="sharebtn" title="Copy a link that restores this progress">Share progress</button>
+            <button class="setbtn" id="restorebtn" title="Import progress from a share link">Restore from link</button>
+          </div>
+          <div id="shareout" hidden>
+            <input id="sharelink" class="sharelink" readonly title="Share link">
+            <div class="shareacts">
+              <button class="setbtn" id="copyshare">Copy link</button>
+              <button class="setbtn" id="shortshare" title="is.gd short link — third-party, may expire">Shorten</button>
+              <button class="setbtn" id="dlbackup" title="Full backup file">Backup file</button>
+            </div>
+          </div>
+          <div id="restorebox" hidden>
+            <input id="restorelink" class="sharelink" placeholder="Paste a share link…">
+            <input id="restorefile" class="restorefile" type="file" accept=".json,application/json" title="Import a backup file">
+            <div id="restorepreview" class="restorepreview muted"></div>
+            <div class="shareacts">
+              <button class="runpill fill" id="doimport" hidden>Import progress</button>
+              <button class="setbtn" id="ignoreimport" hidden>Ignore</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -62,12 +95,22 @@
     <div class="loading">Loading practice bank…</div>
   </main>
 
+  <footer class="foot">
+    <div class="wrap footin">
+      <span>Based on the <a href="./drivers-guide-2026.md" target="_blank">Alberta Driver's Guide (2026)</a></span>
+      <span class="footmeta"><a id="verlink" href="https://github.com/icyavocado/class7-practice/releases/tag/v1" target="_blank">v1</a> · <a href="https://github.com/icyavocado/class7-practice" target="_blank">GitHub↗</a></span>
+    </div>
+  </footer>
+
   <div class="dbwarn" id="dbwarn" hidden>
     ⚠ Persistent storage unavailable — your progress lasts for this session only.
   </div>
 
-  <script src="store.js"></script>
-  <script src="questions.js"></script>
-  <script src="app.js"></script>
+  <script>
+    // always-fresh assets: bust cache on every load (dev safety)
+    document.write('<script src="store.js?v=' + Date.now() + '"><\/script>');
+    document.write('<script src="questions.js?v=' + Date.now() + '"><\/script>');
+    document.write('<script src="app.js?v=' + Date.now() + '"><\/script>');
+  </script>
 </body>
 </html>

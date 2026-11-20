@@ -56,14 +56,81 @@
       S.byChapter.get(q.chapter).push(q);
     });
     if (DB.isFallback()) $('#dbwarn').hidden = false;
-    return Promise.all([DB.getAllState(), DB.getSessions(), DB.getMeta('settings')]);
-  }).then(([states, sessions, settings]) => {
-    (states || []).forEach(r => S.P.set(r.qid, r));
-    S.sessions = sessions || [];
+    return Promise.all([DB.getAllState(), DB.getSessions(), DB.getMeta('settings'), DB.getMeta('profiles')]);
+  }).then(([states, sessions, settings, profiles]) => {
+    profilesReg = (profiles && typeof profiles === 'object' && Object.keys(profiles).length) ? profiles : {};
     if (settings) Object.assign(S.settings, settings);
+    // resolve the active profile: last used name, defaulting to 'Main'
+    const name = S.settings.profile || 'Main';
+    // migrate the anonymous-era save (the hot stores) if this profile has no entry
+    if (!profilesReg[name]) {
+      profilesReg[name] = { p: states || [], sessions: sessions || [], stash: null, created: Date.now() };
+      DB.putMeta('profiles', profilesReg);
+      if (!S.settings.profile) {
+        S.settings.profile = name;
+        DB.putMeta('settings', S.settings);
+      }
+    }
+    // the hot stores hold the freshest data for the active profile
+    profilesReg[name].p = states || [];
+    profilesReg[name].sessions = sessions || [];
+    loadProfileHot(name);
+    DB.putMeta('profiles', profilesReg);
+    refreshProfRow();
     applyAppearance(S.settings.appearance || localStorage.getItem('appearance') || 'system');
+    const hash = location.hash.slice(1);
+    if (hash.indexOf('p1') === 0) {
+      decodeShareLink(hash).then(function(data) {
+        S.pendingShareData = data; S.pendingShareError = null;
+        if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
+      }).catch(function() {
+        S.pendingShareError = true; S.pendingShareData = null;
+        if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
+      });
+    }
     withTransition(gotoIdle);
   });
+
+  /* ------------------------------------------------ profiles */
+  let profilesReg = {};
+  function loadProfileHot(name) {
+    const st = profilesReg[name] || { p: [], sessions: [], stash: null };
+    profilesReg[name] = st;
+    S.P = new Map((st.p || []).map(r => [r.qid, r]));
+    S.sessions = (st.sessions || []).slice();
+    S.stash = st.stash ? (typeof st.stash === 'object' ? JSON.parse(JSON.stringify(st.stash)) : null) : null;
+    S.settings.profile = name;
+  }
+  function saveCurrentProfile() {
+    if (!S.P) return;
+    const name = currentProfile();
+    profilesReg[name] = {
+      p: [...S.P.values()].map(r => ({ ...r })),
+      sessions: S.sessions.slice(),
+      stash: S.stash ? JSON.parse(JSON.stringify(S.stash)) : null,
+      created: (profilesReg[name] && profilesReg[name].created) || Date.now(),
+    };
+    if (window.DB) DB.putMeta('profiles', profilesReg);
+  }
+  function currentProfile() { return (S.settings && S.settings.profile) || 'Main'; }
+  function switchProfile(name) {
+    if (!profilesReg[name] || name === currentProfile()) return;
+    const v = S.view;
+    gotoIdle();                                     // collapses terminal/finished views, clears a live run's timer
+    if (v && v.mode && v.mode !== 'idle' && !v.done) stashRun();   // park a live run on its own profile
+    saveCurrentProfile();
+    loadProfileHot(name);
+    DB.putMeta('settings', S.settings);
+    renderStrip();
+    withTransition(gotoIdle);
+  }
+  function refreshProfRow() {
+    const pick = document.getElementById('profpick');
+    if (!pick) return;
+    pick.innerHTML = Object.keys(profilesReg).sort().map(function(n){
+      return '<option value="' + esc(n) + '"' + (n === currentProfile() ? ' selected' : '') + '>' + esc(n) + '</option>';
+    }).join('');
+  }
 
   /* progress record helpers */
   function rec(qid) {
@@ -85,6 +152,7 @@
   }
 
   /* ------------------------------------------------ appearance */
+  const APP_VERSION = 'v1';
   const RING_C = 2 * Math.PI * 19;
   function ringInit() {
     const arc = document.getElementById('ringarc');
@@ -115,6 +183,13 @@
   }
   applyAppearance(localStorage.getItem('appearance') || 'system');   // mirror before DB load: no theme flash
   ringInit();                                                        // assert the arc's dash pattern at boot
+  (function footerVersion() {                                        // footer shows the running version
+    const ver = document.getElementById('verlink');
+    if (ver) {
+      ver.textContent = APP_VERSION;
+      ver.href = 'https://github.com/icyavocado/class7-practice/releases/tag/' + APP_VERSION;
+    }
+  })();
 
   /* ------------------------------------------------ ring + run controls */
   function ringInit() {
@@ -219,6 +294,169 @@
     b.textContent = resetArmed ? (compact ? 'Confirm erase?' : 'Confirm — erase all progress?')
       : (compact ? 'Reset' : 'Reset progress');
   }
+  /* ------------------------------------------------ profiles + share/restore */
+  (function initProfileRow() {
+    const row = document.getElementById('profpick');
+    if (!row) return;
+    row.addEventListener('change', function() { switchProfile(row.value); });
+    document.getElementById('profnew').onclick = function() {
+      const names = Object.keys(profilesReg);
+      const name = (window.prompt('Name for the new profile:', 'Player ' + (names.length + 1)) || '').trim();
+      if (!name || profilesReg[name]) return;
+      profilesReg[name] = { p: [], sessions: [], stash: null, created: Date.now() };
+      DB.putMeta('profiles', profilesReg);
+      switchProfile(name);
+    };
+    document.getElementById('profrn').onclick = function() {
+      const name = currentProfile();
+      let renamed = (window.prompt('Rename profile "' + name + '" to:', name) || '').trim();
+      if (!renamed || profilesReg[renamed]) return;
+      profilesReg[renamed] = profilesReg[name];
+      delete profilesReg[name];
+      if (currentProfile() === name) S.settings.profile = renamed;
+      DB.putMeta('profiles', profilesReg);
+      DB.putMeta('settings', S.settings);
+      refreshProfRow();
+    };
+    let delArmed = false, delTimer = 0;
+    document.getElementById('profdel').onclick = function() {
+      const btn = document.getElementById('profdel');
+      if (!delArmed) {
+        delArmed = true;
+        btn.textContent = 'Sure?';
+        delTimer = setTimeout(function() { delArmed = false; btn.textContent = '✕'; }, 4000);
+        return;
+      }
+      clearTimeout(delTimer); delArmed = false; btn.textContent = '✕';
+      const name = currentProfile();
+      const others = Object.keys(profilesReg).filter(function(n){ return n !== name; });
+      if (!others.length) return;                     // always keep at least one profile
+      delete profilesReg[name];
+      DB.clearProgressStores().then(function() {
+        S.settings.profile = others[0];
+        DB.putMeta('settings', S.settings);
+        const st = profilesReg[others[0]];
+        S.P = new Map((st.p || []).map(function(r){ return [r.qid, r]; }));
+        S.sessions = (st.sessions || []).slice();
+        S.stash = st.stash ? JSON.parse(JSON.stringify(st.stash)) : null;
+        DB.putMeta('profiles', profilesReg);
+        refreshProfRow();
+        renderStrip();
+        gotoIdle();
+      });
+    };
+    refreshProfRow();
+  })();
+
+  /* ------------------------------------------------ share / restore */
+  function progressPairs() {
+    const out = [];
+    S.bank.forEach(function(q, i) {
+      const r = S.P.get(q.id); if (!r) return;
+      const tier = r.status === 'known' ? 2 : (r.status === 'review' ? 1 : 0);
+      const code = tier | (r.flagged ? 4 : 0) | (Math.min(r.reviewStreak || 0, 3) << 3);
+      if (code !== 0) out.push([i, code]);
+    });
+    return out;
+  }
+  function deflateBytes(bytes) {
+    return deflateRaw(bytes, new CompressionStream('deflate-raw'));
+  }
+  function inflateBytes(bytes) {
+    const ds = new DecompressionStream('deflate-raw');
+    const reader = ds.readable.getReader();
+    const writer = ds.writable.getWriter();
+    return (async function() {
+      await writer.write(bytes);
+      await writer.close();
+      const out = [];
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        for (const b of chunk.value) out.push(b);
+      }
+      return new Uint8Array(out);
+    })();
+  }
+  function deflateRaw(bytes, stream) {
+    return new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer().then(function(buf) { return new Uint8Array(buf); });
+  }
+  function b64urlEncode(bytes) {
+    let bin = '';
+    bytes.forEach(function(b){ bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function packProgressBytes() {
+    const bytes = [];
+    progressPairs().forEach(function(pair) {
+      bytes.push(pair[0] & 255, (pair[0] >> 8) & 255, pair[1] & 255);
+    });
+    let sum = 0; bytes.forEach(function(b){ sum += b; });
+    bytes.push(sum & 255, (sum >> 8) & 255);           // 2-byte checksum
+    return new Uint8Array(bytes);
+  }
+  async function buildShareLink() {
+    return location.origin + location.pathname + '#p2' + b64urlEncode(packProgressBytes());
+  }
+  async function decodeShareLink(input) {
+    const hash = input.replace(/^.*#/, '');
+    const wait = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+    let m = hash.match(/^p2([A-Za-z0-9_-]+)$/);
+    let bytes;
+    if (m) {
+      bytes = rawDecodePad(m[1]);
+    } else {
+      m = hash.match(/^p1([zr])([A-Za-z0-9_-]+)$/);
+      if (!m) throw new Error('not a share link');
+      bytes = rawDecodePad(m[2]);
+      if (bytes.length < 2) throw new Error('empty');
+      const chk = bytes[bytes.length - 2] | (bytes[bytes.length - 1] << 8);
+      const body = bytes.slice(0, bytes.length - 2);
+      let sum = 0; body.forEach(function(b){ sum += b; });
+      if ((sum & 255) !== (chk & 255) || (sum >> 8) !== (chk >> 8)) throw new Error('checksum');
+      if (m[1] === 'z') body = await Promise.race([ inflateBytes(body), wait(1200).then(function(){ throw new Error('decompression unsupported'); }) ]);
+      bytes = body;
+    }
+    const out = [];
+    for (let i = 0; i + 2 <= bytes.length; i += 3) out.push([bytes[i] | (bytes[i + 1] << 8), bytes[i + 2] & 31]);
+    const seen = out.filter(function(p){ return (p[1] & 3) !== 0; }).length;
+    const flags = out.filter(function(p){ return (p[1] & 4) === 4; }).length;
+    return { pairs: out, seen: seen, review: Math.max(0, seen - out.filter(function(p){ return (p[1] & 3) === 2; }).length), flags: flags };
+  }
+  function rawDecodePad(b64) {
+    let s = b64.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = (4 - (s.length % 4)) % 4;
+    s += '='.repeat(pad);
+    const bin = atob(s);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+  function applyImportPairs(pairs) {
+    pairs.forEach(function(pair) {
+      const q = S.bank[pair[0]]; if (!q) return;
+      const tier = pair[1] & 3, flag = (pair[1] & 4) === 4, streak = (pair[1] >> 3) & 3;
+      const r = rec(q.id);
+      if (r.status === 'unseen') {
+        r.status = tier === 2 ? 'known' : (tier === 1 ? 'review' : 'unseen');
+        r.reviewStreak = streak;
+      }
+      if (flag) r.flagged = true;
+      persist(q.id);
+    });
+    bulkPersist();
+    saveCurrentProfile();
+    renderStrip();
+  }
+  function bulkPersist() {
+    if (window.DB && DB.bulkPutState) DB.bulkPutState([...S.P.values()]);
+  }
+  function clearPendingShare() {
+    history.replaceState(null, '', location.pathname + location.search);
+    S.pendingShareData = null; S.pendingShareError = null;
+  }
+  window.__share = { buildShareLink: buildShareLink, decodeShareLink: decodeShareLink, packProgressBytes: packProgressBytes, deflateBytes: deflateBytes, inflateBytes: inflateBytes };
+
   function handleReset() {
     if (!resetArmed) {
       resetArmed = true; paintReset();
@@ -226,7 +464,13 @@
       return;
     }
     clearTimeout(resetTimer); resetArmed = false;
-    DB.reset().then(() => { S.P.clear(); S.sessions = []; S.stash = null; gotoIdle(); });
+    const name = currentProfile();                     // reset wipes only the active profile
+    DB.clearProgressStores().then(() => {
+      profilesReg[name] = { p: [], sessions: [], stash: null, created: Date.now() };
+      DB.putMeta('profiles', profilesReg);
+      S.P.clear(); S.sessions = []; S.stash = null;
+      gotoIdle();
+    });
   }
 
   function zone(html) { $('#zone').innerHTML = html; }
@@ -237,7 +481,20 @@
     renderStrip();
     const weakCh = weakestChapter();
     const reviewCount = countReview();
+    let shareBody = '', impBtn = '';
+    if (S.pendingShareError) {
+      shareBody = '<div class="muted">Could not read that link — ask to share it again.</div>';
+    } else if (S.pendingShareData) {
+      shareBody = '<div class="muted">' + S.pendingShareData.seen + ' seen · ' + S.pendingShareData.review + ' review · ' + S.pendingShareData.flags + ' flags — importing fills unanswered questions.</div>';
+      impBtn = '<button class="runpill fill" id="impshare">Import progress</button>';
+    }
+    const banner = (S.pendingShareData || S.pendingShareError) ? `<div class="sharebanner">
+        <div class="sbtitle">Shared progress detected</div>
+        ${shareBody}
+        <div class="shareacts">${impBtn}<button class="setbtn" id="ignshare">Ignore</button></div>
+      </div>` : '';
     zone(`<section class="card wrap idle" aria-label="Overview">
+      ${banner}
       <h1>Practice for your Class 7 knowledge test</h1>
       <div class="muted">Right answers raise the chapter confidence. Miss a mastered question and it drops back to review, so weak chapters surface.</div>
       <div class="modegrid">
@@ -253,6 +510,14 @@
     $('#m-ch').onclick = () => startChapterWeakestOr2();
     $('#m-review').onclick = startReview;
     $('#chapters').onclick = e => { const b = e.target.closest('button[data-chapter]'); if (b) startChapter(+b.dataset.chapter); };
+    const imp = $('#impshare');
+    if (imp) imp.onclick = function() {
+      if (S.pendingShareData) applyImportPairs(S.pendingShareData.pairs);
+      clearPendingShare();
+      withTransition(gotoIdle);
+    };
+    const ign = $('#ignshare');
+    if (ign) ign.onclick = function() { clearPendingShare(); withTransition(gotoIdle); };
   }
   function startChapterWeakestOr2() {
     const w = weakestChapter(); startChapter(w ? w.id : 2);
@@ -425,6 +690,126 @@
     withTransition(renderQuestion);
   }
   const isReview = v => v.mode === 'review';
+
+  /* ------------------------------------------------ share/restore UI */
+  let pendingRestore = null;
+  const restPrev = document.getElementById('restorepreview');
+  const restBox = document.getElementById('restorebox');
+  const restImp = document.getElementById('doimport'), restIgn = document.getElementById('ignoreimport');
+  const shareBox = document.getElementById('shareout');
+  function parseBackupText(raw) {
+    const data = JSON.parse(raw);
+    if (!data || data.app !== 'class7-practice' || !Array.isArray(data.progress)) throw new Error('not a backup');
+    return { src: 'file', file: data, seen: data.progress.length, review: data.progress.filter(function(r){ return r.status === 'review'; }).length, flags: data.progress.filter(function(r){ return r.flagged; }).length, sessions: (data.sessions || []).length };
+  }
+  async function previewRestore(raw) {
+    pendingRestore = null; restPrev.textContent = 'Reading…'; restImp.hidden = true; restIgn.hidden = false;
+    let info = null;
+    try { info = await decodeShareLink(raw); pendingRestore = { src: 'link', data: info }; }
+    catch (err) {
+      try { info = parseBackupText(raw); pendingRestore = { src: 'file', data: info }; }
+      catch (err2) { pendingRestore = null; }
+    }
+    if (pendingRestore) {
+      const d = pendingRestore.data;
+      restPrev.textContent = pendingRestore.src === 'link'
+        ? d.seen + ' seen · ' + d.review + ' review · ' + d.flags + ' flags — importing fills unanswered questions.'
+        : (d.file && d.file.profile ? d.file.profile + ': ' : '') + d.seen + ' records · ' + d.sessions + ' sessions — importing REPLACES this profile.';
+      restImp.hidden = false;
+    } else {
+      const msg = err && err.message ? String(err.message).slice(0, 60) : 'unknown error';
+      restPrev.textContent = "Couldn't read that — " + msg + '. Use a Share link or a Backup file.';
+    }
+  }
+  document.getElementById('sharebtn').onclick = async function() {
+    restBox.hidden = true;
+    const btn = document.getElementById('sharebtn');
+    btn.disabled = true; btn.textContent = 'Building…';
+    try {
+      const inp = document.getElementById('sharelink');
+      inp.value = await buildShareLink();
+      shareBox.hidden = false;
+      inp.focus(); inp.select();
+    } catch (err) {}
+    btn.disabled = false; btn.textContent = 'Share progress';
+  };
+  document.getElementById('copyshare').onclick = function() {
+    const inp = document.getElementById('sharelink');
+    const done = function() { const c = document.getElementById('copyshare'); c.textContent = 'Copied ✓'; setTimeout(function(){ c.textContent = 'Copy link'; }, 1600); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, function() { inp.select(); try { document.execCommand('copy'); } catch (e) {} done(); });
+    else { inp.focus(); inp.select(); try { document.execCommand('copy'); } catch (e) {} done(); }
+  };
+  document.getElementById('shortshare').onclick = function() {
+    const inp = document.getElementById('sharelink');
+    const btn = document.getElementById('shortshare');
+    btn.disabled = true; btn.textContent = '…';
+    const cb = 'isgd' + Date.now().toString(36);
+    window[cb] = function(data) {
+      delete window[cb];
+      btn.disabled = false; btn.textContent = 'Shorten';
+      if (data && data.shorturl) inp.value = data.shorturl;
+      else btn.textContent = 'unavailable';
+      setTimeout(function(){ btn.textContent = 'Shorten'; }, 2000);
+    };
+    const s = document.createElement('script');
+    s.onload = function() {};
+    s.onerror = function() { delete window[cb]; btn.disabled = false; btn.textContent = 'offline'; setTimeout(function(){ btn.textContent = 'Shorten'; }, 2000); };
+    s.src = 'https://is.gd/create.php?format=json&callback=' + cb + '&url=' + encodeURIComponent(inp.value);
+    document.head.appendChild(s);
+  };
+  document.getElementById('dlbackup').onclick = function() {
+    saveCurrentProfile();
+    const name = currentProfile();
+    const payload = { app: 'class7-practice', version: APP_VERSION, profile: name, created: new Date().toISOString(), progress: (profilesReg[name] && profilesReg[name].p) || [], sessions: S.sessions.slice(), stash: S.stash || null };
+    const blob = new Blob([JSON.stringify(payload, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'class7-practice-backup-' + name.replace(/[^\w-]+/g, '_') + '.json';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1200);
+  };
+  document.getElementById('restorebtn').onclick = function() {
+    shareBox.hidden = true; restBox.hidden = false;
+    const inp = document.getElementById('restorelink');
+    inp.value = ''; restPrev.textContent = ''; restImp.hidden = true;
+    inp.focus();
+  };
+  const restInput = document.getElementById('restorelink');
+  let restDebounce = 0;
+  restInput.addEventListener('input', function() {
+    clearTimeout(restDebounce);
+    const raw = restInput.value;
+    if (!raw) { pendingRestore = null; restPrev.textContent = ''; restImp.hidden = true; return; }
+    restPrev.textContent = 'Reading…'; restImp.hidden = true;
+    restDebounce = setTimeout(function() { previewRestore(raw); }, 180);
+  });
+  document.getElementById('restorefile').addEventListener('change', function() {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function() { previewRestore(String(reader.result)); };
+    reader.readAsText(file);
+  });
+  restImp.onclick = function() {
+    if (!pendingRestore) return;
+    if (pendingRestore.src === 'link') {
+      applyImportPairs(pendingRestore.data.pairs);
+    } else {
+      const bak = pendingRestore.data.file;
+      const recs = (bak.progress || []).map(function(r){ return { qid: r.qid, status: r.status, attempts: r.attempts || 0, reviewStreak: r.reviewStreak || 0, flagged: !!r.flagged, lastResult: r.lastResult || null, updatedAt: r.updatedAt || 0 }; });
+      S.P = new Map(recs.map(function(r){ return [r.qid, r]; }));
+      bulkPersist();
+      S.sessions = (bak.sessions || []).slice();
+      S.sessions.forEach(function(s2){ if (window.DB) DB.addSession(s2); });
+      S.stash = bak.stash || null;
+      saveCurrentProfile();
+      gotoIdle();
+    }
+    restPrev.textContent = 'Imported ✓';
+    pendingRestore = null; restImp.hidden = true; restIgn.hidden = true;
+    setTimeout(function(){ restBox.hidden = true; }, 1200);
+  };
+  restIgn.onclick = function() { pendingRestore = null; restBox.hidden = true; };
 
   /* ------------------------------------------------ answering */
   function renderTally() {
