@@ -631,7 +631,8 @@
     if (nb2) {
       nb2.hidden = isExam ? atLast : !answered;
       nb2.onclick = () => {
-        if (isExam && !answered) (v.tally = v.tally || [])[v.idx] = 'skip';   // passed over unanswered
+        const m = (v.tally || [])[v.idx];                 // live state: 'skip' only if still unanswered
+        if (isExam && m !== true && m !== false) (v.tally = v.tally || [])[v.idx] = 'skip';
         v.idx++; withTransition(renderQuestion);
       };
     }
@@ -854,9 +855,9 @@
         else { r.status = 'review'; persist(q.id); fb = `<div class="feedback no"><b>Wrong — added to review</b> ${esc(q.explanation)}${src(q)}</div>`; }
       }
       persist(q.id);
-      renderTop();
-      renderTally();
     }
+    renderTop();
+    renderTally();
 
     $('#fb').innerHTML = fb + flagHtml(q);
     const fq = $('#flagq');
