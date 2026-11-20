@@ -1,0 +1,47 @@
+name: release
+# Runs only on version tags (v*): attaches the offline bundle to a GitHub
+# Release and deploys the site to GitHub Pages. Regular pushes to main
+# deploy nothing.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # create the release
+  pages: write      # deploy-pages
+  id-token: write   # deploy-pages auth
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pack offline bundle (app + guide, works from file://)
+        run: |
+          NAME="class7-practice-${GITHUB_REF_NAME}"
+          mkdir -p "$NAME"
+          cp index.html app.js store.js questions.js styles.css \
+             geist-var.woff2 geist-mono-var.woff2 drivers-guide-2026.md "$NAME/"
+          zip -qr "$NAME.zip" "$NAME"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" "class7-practice-${GITHUB_REF_NAME}.zip#Offline bundle (app + guide)" --title "${GITHUB_REF_NAME}" --generate-notes
+
+      - name: Configure Pages (workflow mode)
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy site
+        uses: actions/deploy-pages@v4
