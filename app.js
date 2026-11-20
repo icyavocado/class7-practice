@@ -90,7 +90,17 @@
         if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
       });
     }
-    withTransition(gotoIdle);
+    const mRun = hash.match(/^(exam|chapter|review)\/(\d+)$/);
+    if (S.stash && (!mRun || S.stash.mode === mRun[1])) {
+      const v = S.stash; S.stash = null; S.view = v; saveCurrentProfile();
+      const want = mRun ? parseInt(mRun[2], 10) - 1 : v.idx;
+      S.view.idx = Math.max(0, Math.min(want, S.view.queue.length - 1));
+      if (S.view.mode === 'exam') startExamTimer();
+      renderTop(); withTransition(renderQuestion);
+    } else {
+      if (mRun) navReplace('#home');   // stale run link — nothing to resume
+      withTransition(gotoIdle);
+    }
   });
 
   /* ------------------------------------------------ profiles */
@@ -250,16 +260,6 @@
     if (e.target.closest('#resetbtn')) { handleReset(); return; }
     if (e.target.closest('[data-act="skip"]')) { stashRun(); return; }
     if (e.target.closest('[data-act="resume"]')) { resumeRun(); return; }
-    const mark = e.target.closest('#tally i');
-    if (mark) {
-      const v = S.view;
-      if (v && v.queue) {
-        const k = [...mark.parentElement.children].indexOf(mark);
-        const ans = (v.tally || []).filter(x => x === true || x === false).length;
-        if (v.mode === 'exam' || k < ans) gotoQuestion(k);
-      }
-      return;
-    }
   });
 
   /* ------------------------------------------------ view rendering */
@@ -456,6 +456,7 @@
   function gotoIdle() {
     if (S.view && S.view.timer) clearInterval(S.view.timer);
     S.view = { mode: 'idle' }; document.title = 'Alberta Class 7 Practice 2026';
+    navReplace('#home');
     renderTop();
     const weakCh = weakestChapter();
     const reviewCount = countReview();
@@ -525,6 +526,7 @@
     const queue = groups[0].concat(groups[1], groups[2]);
     S.stash = null;
     S.view = { mode: 'chapter', chapter: ch, queue, idx: 0, correct: 0, answered: 0 };
+    navPush(hashFor('chapter', 0, false));
     withTransition(renderQuestion);
   }
 
@@ -537,6 +539,7 @@
     if (!list.length) { gotoIdle(); return; }
     S.stash = null;
     S.view = { mode: 'review', queue: list, idx: 0, correct: 0, answered: 0 };
+    navPush(hashFor('review', 0, false));
     withTransition(renderQuestion);
   }
   function startExam() {
@@ -569,6 +572,7 @@
       const el = $('#timer'); if (el) { el.textContent = mmss(S.view.left); el.classList.toggle('hot', S.view.left < 300); }
       if (S.view.left <= 0) { clearInterval(S.view.timer); S.view.left = 0; }
     }, 1000);
+    navPush(hashFor('exam', 0, false));
     withTransition(renderQuestion);
   }
 
@@ -633,7 +637,9 @@
       nb2.onclick = () => {
         const m = (v.tally || [])[v.idx];                 // live state: 'skip' only if still unanswered
         if (isExam && m !== true && m !== false) (v.tally = v.tally || [])[v.idx] = 'skip';
-        v.idx++; withTransition(renderQuestion);
+        v.idx++;
+        history.pushState(null, '', hashFor(v.mode, v.idx, false));
+        withTransition(renderQuestion);
       };
     }
     const fin = document.getElementById('finishbtn');
@@ -649,8 +655,13 @@
     opts.forEach(o => { if (!answered) o.onclick = () => answer(+o.dataset.i, opts, letters); });
     renderTop();
     renderTally();
+    navReplace(hashFor(v.mode, v.idx, false));
   }
-  function gotoQuestion(k) { S.view.idx = k; withTransition(renderQuestion); }
+  function gotoQuestion(k) {
+    history.pushState(null, '', hashFor(S.view, k));
+    S.view.idx = k;
+    withTransition(renderQuestion);
+  }
   function startExamTimer() {
     S.view.timer = setInterval(() => {
       S.view.left--;
@@ -658,22 +669,64 @@
       if (S.view.left <= 0) { clearInterval(S.view.timer); S.view.left = 0; }
     }, 1000);
   }
-  function stashRun() {
+  function parkRun(outHash) {
     const v = S.view;
-    if (!v || !v.mode || v.mode === 'idle') return;
+    if (!v || !v.mode || v.mode === 'idle') { navReplace('#home'); return; }
     if (v.timer) clearInterval(v.timer);
-    S.stash = v;
+    if (!v.done) {
+      const { timer, ...rest } = v;
+      S.stash = JSON.parse(JSON.stringify(rest));
+      saveCurrentProfile();
+    }
+    history.replaceState(null, '', outHash || hashFor(v.mode, v.idx, v.done));
+  }
+  function stashRun() {
+    parkRun();
     gotoIdle();
   }
+  window.addEventListener('pagehide', parkRun);
+  window.addEventListener('beforeunload', parkRun);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') parkRun(); });
   function resumeRun() {
     if (!S.stash) return;
     const v = S.stash; S.stash = null;
     S.view = v;
+    saveCurrentProfile();
     if (v.mode === 'exam') startExamTimer();
+    navReplace(hashFor(v.mode, v.idx, v.done));
     renderTop();
     withTransition(renderQuestion);
   }
   const isReview = v => v.mode === 'review';
+
+  /* ------------------------------------------------ url routing: back/forward/refresh */
+  function hashFor(mode, idx, done) {
+    if (!mode || mode === 'idle') return '#home';
+    return done ? '#results' : '#' + mode + '/' + (idx + 1);
+  }
+  function navReplace(hash) { if ((location.hash.slice(1) || 'home') !== hash.slice(1)) history.replaceState(null, '', hash); }
+  function navPush(hash) { if ((location.hash.slice(1) || 'home') !== hash.slice(1)) history.pushState(null, '', hash); }
+  window.addEventListener('popstate', () => {
+    const h = location.hash.slice(1) || 'home';
+    const m = h.match(/^(exam|chapter|review)\/(\d+)$/);
+    if (!m) {
+      if (h === 'results' && S.view && S.view.done) { showResults(); return; }
+      if (S.view && S.view.mode && S.view.mode !== 'idle' && !S.view.done) parkRun('#home');
+      gotoIdle();
+      return;
+    }
+    const mode = m[1], k = Math.max(0, Math.min(parseInt(m[2], 10) - 1, S.view && S.view.queue ? S.view.queue.length - 1 : 0));
+    if (S.view && S.view.mode === mode && !S.view.done) {
+      S.view.idx = k; renderTop(); withTransition(renderQuestion); return;
+    }
+    if (S.stash && S.stash.mode === mode) {
+      const v = S.stash; S.stash = null; S.view = v; saveCurrentProfile();
+      S.view.idx = Math.min(k, S.view.queue.length - 1);
+      if (S.view.mode === 'exam') startExamTimer();
+      renderTop(); withTransition(renderQuestion); return;
+    }
+    gotoIdle();
+  });
 
   /* ------------------------------------------------ share/restore UI */
   let pendingRestore = null;
@@ -804,7 +857,92 @@
     for (let k = 0; k < n; k++) html += `<i class="${marks[k] === undefined ? 'todo' : (marks[k] === 'skip' ? 'qskip' : (marks[k] ? 'ok' : 'no'))}"></i>`;
     t.innerHTML = html;
     t.hidden = false;
+    t.setAttribute('tabindex', '0');
+    t.setAttribute('role', 'slider');
+    t.setAttribute('aria-valuemin', '1');
+    t.setAttribute('aria-valuemax', String(n));
+    t.setAttribute('aria-valuenow', String(v.idx + 1));
+    t.setAttribute('aria-valuetext', 'Question ' + (v.idx + 1) + ' of ' + n);
   }
+
+  /* ------------------------------------------------ tally scrub: press, slide, release to jump */
+  let scrubTarget = null, scrubTick = -1;
+  let scrubBubbleEl = null;
+  const hideScrubBubble = () => { if (scrubBubbleEl) { scrubBubbleEl.remove(); scrubBubbleEl = null; } };
+  function showScrubBubble(x, y, k, jumpable) {
+    if (!scrubBubbleEl) { scrubBubbleEl = document.createElement('div'); scrubBubbleEl.className = 'scrubbubble'; document.body.appendChild(scrubBubbleEl); }
+    scrubBubbleEl.textContent = 'Q ' + (k + 1) + '/' + S.view.queue.length;
+    scrubBubbleEl.classList.toggle('locked', !jumpable);
+    const half = scrubBubbleEl.offsetWidth / 2;
+    scrubBubbleEl.style.left = Math.min(Math.max(x, half + 4), innerWidth - half - 4) + 'px';
+    scrubBubbleEl.style.top = y + 'px';
+    scrubBubbleEl.style.transform = 'translate(-50%, -170%)';
+  }
+  function jumpableTo(v, k) { return v.mode === 'exam' || k < (v.tally || []).filter(x => x === true || x === false).length; }
+  function tickUnder(tally, x, y) {
+    let best = -1, bd = Infinity;
+    for (let k = 0; k < tally.children.length; k++) {
+      const r = tally.children[k].getBoundingClientRect();
+      const dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = k; }
+    }
+    return bd === Infinity ? -1 : best;
+  }
+  function paintScrub(tally, k) {
+    if (tally) [...tally.children].forEach((i, ik) => i.classList.toggle('scrub', ik === k));
+  }
+  document.addEventListener('pointerdown', e => {
+    const tally = e.target.closest && e.target.closest('#tally');
+    if (!tally) return;
+    const v = S.view; if (!v || !v.queue) return;
+    scrubTarget = { tally, id: e.pointerId };
+    try { tally.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+    tickUnder(tally, e.clientX, e.clientY);
+    paintScrub(tally, scrubTick = Math.max(tickUnder(tally, e.clientX, e.clientY), 0));
+    showScrubBubble(e.clientX, e.clientY, scrubTick, jumpableTo(v, scrubTick));
+  });
+  document.addEventListener('pointermove', e => {
+    if (!scrubTarget || e.pointerId !== scrubTarget.id) return;
+    e.preventDefault();
+    const { tally } = scrubTarget, v = S.view;
+    const k = Math.max(tickUnder(tally, e.clientX, e.clientY), 0);
+    if (k !== scrubTick) { scrubTick = k; paintScrub(tally, k); }
+    showScrubBubble(e.clientX, e.clientY, scrubTick, jumpableTo(v, scrubTick));
+  });
+  function endScrub(e) {
+    if (!scrubTarget || e.pointerId !== scrubTarget.id) return;
+    const { tally } = scrubTarget, v = S.view, k = scrubTick;
+    paintScrub(tally, -1); hideScrubBubble();
+    scrubTick = -1; scrubTarget = null;
+    if (k >= 0 && jumpableTo(v, k) && k !== v.idx) gotoQuestion(k);
+  }
+  document.addEventListener('pointerup', endScrub);
+  document.addEventListener('pointercancel', endScrub);
+  document.addEventListener('keydown', e => {
+    const tally = e.target.closest && e.target.closest('#tally');
+    if (!tally) return;
+    const v = S.view; if (!v || !v.queue) return;
+    const n = v.queue.length;
+    let handled = true;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') scrubTick = Math.min(n - 1, (scrubTick < 0 ? v.idx : scrubTick) + 1);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') scrubTick = Math.max(0, (scrubTick < 0 ? v.idx : scrubTick) - 1);
+    else if (e.key === 'Home') scrubTick = 0;
+    else if (e.key === 'End') scrubTick = n - 1;
+    else if ((e.key === 'Enter' || e.key === ' ') && scrubTick >= 0) {
+      paintScrub(tally, -1); const k = scrubTick; scrubTick = -1;
+      t.setAttribute('aria-valuenow', String(v.idx + 1));
+      if (jumpableTo(v, k) && k !== v.idx) gotoQuestion(k);
+      return;
+    } else handled = false;
+    if (handled) {
+      e.preventDefault();
+      paintScrub(tally, scrubTick);
+      t.setAttribute('aria-valuenow', String(scrubTick + 1));
+      t.setAttribute('aria-valuetext', 'Question ' + (scrubTick + 1) + ' of ' + n);
+    }
+  });
 
   function answer(i, opts, letters) {
     const v = S.view;
@@ -898,6 +1036,9 @@
   function showChapterSummary() {
     const v = S.view;
     v.done = true;
+    S.stash = null;
+    saveCurrentProfile();
+    navPush(hashFor(v.mode, v.idx, true));
     renderTop();
     const pct = v.answered ? Math.round(v.correct / v.answered * 100) : 0;
     const label = v.mode === 'review' ? 'Review' : esc(chapterName(v.chapter));
