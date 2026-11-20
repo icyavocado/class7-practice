@@ -61,6 +61,7 @@
     (states || []).forEach(r => S.P.set(r.qid, r));
     S.sessions = sessions || [];
     if (settings) Object.assign(S.settings, settings);
+    applyAppearance(S.settings.appearance || localStorage.getItem('appearance') || 'system');
     withTransition(gotoIdle);
   });
 
@@ -83,7 +84,70 @@
     return { known, total: pool.length, pct: pool.length ? known / pool.length : 0 };
   }
 
-  /* ------------------------------------------------ strip */
+  /* ------------------------------------------------ appearance */
+  const RING_C = 2 * Math.PI * 19;
+  function ringInit() {
+    const arc = document.getElementById('ringarc');
+    if (arc) arc.style.strokeDasharray = RING_C.toFixed(1);
+  }
+  function applyAppearance(mode) {
+    mode = ['light', 'dark', 'system'].includes(mode) ? mode : 'system';
+    const root = document.documentElement;
+    if (mode === 'system') delete root.dataset.colorScheme;
+    else root.dataset.colorScheme = mode;
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if (mode !== 'system') {
+      const c = mode === 'light' ? '#eef0f3' : '#0b0c0e';
+      metas.forEach(m => { m.content = c; m.removeAttribute('media'); });
+    } else if (metas[0] && metas[1]) {
+      metas[0].content = '#eef0f3'; metas[0].setAttribute('media', '(prefers-color-scheme: light)');
+      metas[1].content = '#0b0c0e'; metas[1].setAttribute('media', '(prefers-color-scheme: dark)');
+    }
+    try { localStorage.setItem('appearance', mode); } catch (e) {}
+    const pick = document.getElementById('appearpick');
+    if (pick) [...pick.querySelectorAll('button')].forEach(b => b.classList.toggle('on', b.dataset.appearance === mode));
+  }
+  function setAppearance(mode) {
+    S.settings = S.settings || {};
+    S.settings.appearance = mode;
+    applyAppearance(mode);
+    if (window.DB) DB.putMeta('settings', S.settings);
+  }
+  applyAppearance(localStorage.getItem('appearance') || 'system');   // mirror before DB load: no theme flash
+
+  /* ------------------------------------------------ ring + run controls */
+  function updateRing(activeRun) {
+    const seen = S.bank.filter(q => { const r = S.P.get(q.id); return r && r.status !== 'unseen'; }).length;
+    const total = S.bank.length;
+    const nEl = document.getElementById('ringn'), totEl = document.getElementById('ringtotal'), arc = document.getElementById('ringarc');
+    const ring = document.getElementById('ring');
+    if (!ring) return;
+    nEl.textContent = seen;
+    totEl.textContent = '/' + total;
+    arc.style.strokeDashoffset = (RING_C * (1 - (total ? seen / total : 0))).toFixed(1);
+    ring.classList.toggle('spinning', !!activeRun);
+    ring.title = 'Questions seen: ' + seen + ' of ' + total;
+    const ts = document.getElementById('testsstat');
+    if (ts) ts.textContent = S.sessions.length;
+  }
+
+  /* ------------------------------------------------ settings menu */
+  const gearbtn = document.getElementById('gearbtn'), settingsPanel = document.getElementById('settings');
+  gearbtn.onclick = () => {
+    settingsPanel.hidden = !settingsPanel.hidden;
+    gearbtn.setAttribute('aria-expanded', String(!settingsPanel.hidden));
+  };
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && settingsPanel && !settingsPanel.hidden) {
+      settingsPanel.hidden = true;
+      gearbtn.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.getElementById('appearpick').onclick = e => {
+    const b = e.target.closest('button[data-appearance]');
+    if (b) setAppearance(b.dataset.appearance);
+  };
+
   function renderStrip() {
     let weak = null;
     const rows = CHAPTERS.map(ch => {
@@ -108,17 +172,17 @@
     stripInner.innerHTML = rows +
       `<button class="chip drill" data-act="weakest"><span class="cname">Drill weakest</span><span class="bar"><i style="width:100%"></i></span></button>`;
     stripInner.scrollLeft = scrollLeft;
-
-    const seen = S.bank.filter(q => { const r = S.P.get(q.id); return r && r.status !== 'unseen'; }).length;
+    updateRing(activeRun);
     $('#topstats').innerHTML =
-      `<span class="pill">Tests: <b>${S.sessions.length}</b></span>` +
-      `<span class="pill ok">Questions seen: <b>${seen}/${S.bank.length}</b></span>` +
       (skipLbl ? `<button class="runpill" data-act="skip">${esc(skipLbl)}</button>` : '') +
-      (resumeLbl ? `<button class="runpill fill" data-act="resume">${esc(resumeLbl)}</button>` : '') +
-      `<button class="resetpill" id="resetbtn">Reset progress</button>`;
-    paintReset();
+      (resumeLbl ? `<button class="runpill fill" data-act="resume">${esc(resumeLbl)}</button>` : '');
   }
   document.addEventListener('click', e => {
+    const panel = document.getElementById('settings');
+    if (panel && !panel.hidden && !e.target.closest('#settings') && !e.target.closest('#gearbtn')) {
+      panel.hidden = true;
+      document.getElementById('gearbtn').setAttribute('aria-expanded', 'false');
+    }
     if (e.target.closest('#resetbtn')) { handleReset(); return; }
     if (e.target.closest('[data-act="skip"]')) { stashRun(); return; }
     if (e.target.closest('[data-act="resume"]')) { resumeRun(); return; }

@@ -215,6 +215,36 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .progcount .no-c { color: var(--bad); }
 .pass-note { color: var(--muted-fg); }
 
+/* ---------- top bar: ring + gear + settings ---------- */
+.topbar-wrap { position: relative; }
+.ring { position: relative; width: 44px; height: 44px; border: 0; padding: 0; background: transparent; cursor: pointer; }
+.ring svg { width: 44px; height: 44px; display: block; }
+.ring .track { fill: none; stroke: color-mix(in oklab, var(--muted-fg) 30%, transparent); stroke-width: 3.5; }
+.ring .arc { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; transition: stroke-dashoffset 500ms ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.ringtext { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; font-family: 'Geist Mono', ui-monospace, monospace; line-height: 1; }
+.ringtext b { font-size: 12px; font-weight: 600; color: var(--ink); }
+.ringtext i { font-style: normal; font-size: 9px; color: var(--muted-fg); margin-top: 2px; }
+.ring.spinning svg { animation: ringspin 7s linear infinite; }
+@keyframes ringspin { to { transform: rotate(360deg); } }
+
+.gearbtn { width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--muted-fg); cursor: pointer; display: grid; place-items: center; transition: border-color var(--speed), background var(--speed), transform var(--speed); }
+.gearbtn:hover { border-color: var(--accent); color: var(--accent); background: var(--action-soft); transform: translateY(-1px); }
+.gearbtn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+
+.settings { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 240px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-card); padding: 4px; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; }
+.setcol { flex-direction: column; align-items: flex-start; gap: 8px; }
+.setlabel { font-size: 12px; color: var(--muted-fg); font-weight: 500; }
+.segmented { display: flex; gap: 4px; }
+.segmented button { font: inherit; font-size: 11.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--ink); cursor: pointer; }
+.segmented button:hover { border-color: var(--accent); }
+.segmented button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.setrow.stat b { font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; }
+.setsep { height: 1px; background: var(--border); margin: 2px 6px; }
+
+:root[data-color-scheme="light"] { color-scheme: light; }
+:root[data-color-scheme="dark"] { color-scheme: dark; }
+
 /* ---------- skip / resume run controls (top bar) ---------- */
 .runpill {
   font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap;
@@ -320,11 +350,8 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 }
 
 @media (max-width: 480px) {
-  /* two-row topbar: brand on its own line, stats row below */
-  .topbar-wrap { flex-wrap: wrap; row-gap: 6px; padding-block: 10px 8px; }
-  .topbar .brand { flex: 1 1 100%; }
-  .brand-main { font-size: 13.5px; white-space: nowrap; }
-  .topstats { width: 100%; justify-content: space-between; gap: 6px; font-size: 11px; flex-wrap: wrap; row-gap: 4px; }
+  .topbar-wrap { padding-block: 10px 8px; gap: 12px; }
+  .gearbtn { margin-left: auto; }
   .pill { padding: 3px 9px; font-size: 11px; }
   .runpill { padding: 3px 9px; font-size: 11px; }
   /* header row: tag left, counter+Flag right; tally moves to its own full-width row */
