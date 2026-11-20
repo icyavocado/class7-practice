@@ -114,8 +114,13 @@
     if (window.DB) DB.putMeta('settings', S.settings);
   }
   applyAppearance(localStorage.getItem('appearance') || 'system');   // mirror before DB load: no theme flash
+  ringInit();                                                        // assert the arc's dash pattern at boot
 
   /* ------------------------------------------------ ring + run controls */
+  function ringInit() {
+    const arc = document.getElementById('ringarc');
+    if (arc) arc.style.strokeDasharray = RING_C.toFixed(1);
+  }
   function updateRing(activeRun) {
     const seen = S.bank.filter(q => { const r = S.P.get(q.id); return r && r.status !== 'unseen'; }).length;
     const total = S.bank.length;
@@ -124,7 +129,8 @@
     if (!ring) return;
     nEl.textContent = seen;
     totEl.textContent = '/' + total;
-    arc.style.strokeDashoffset = (RING_C * (1 - (total ? seen / total : 0))).toFixed(1);
+    arc.style.strokeDasharray = RING_C.toFixed(1);
+    arc.style.strokeDashoffset = (RING_C * ((total ? seen / total : 0) - 1)).toFixed(1);   // negative: fill grows clockwise from 12 o'clock
     ring.classList.toggle('spinning', !!activeRun);
     ring.title = 'Questions seen: ' + seen + ' of ' + total;
     const ts = document.getElementById('testsstat');

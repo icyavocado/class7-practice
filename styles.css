@@ -219,11 +219,11 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .topbar-wrap { position: relative; }
 .ring { position: relative; width: 44px; height: 44px; border: 0; padding: 0; background: transparent; cursor: pointer; }
 .ring svg { width: 44px; height: 44px; display: block; }
-.ring .track { fill: none; stroke: color-mix(in oklab, var(--muted-fg) 30%, transparent); stroke-width: 3.5; }
-.ring .arc { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; transition: stroke-dashoffset 500ms ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.ring .track { fill: none; stroke: color-mix(in oklab, var(--muted-fg) 13%, transparent); stroke-width: 3; }
+.ring .arc { fill: none; stroke: color-mix(in oklab, var(--bad) 75%, transparent); stroke-width: 2.5; stroke-linecap: round; transition: stroke-dashoffset 500ms ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
 .ringtext { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; font-family: 'Geist Mono', ui-monospace, monospace; line-height: 1; }
-.ringtext b { font-size: 12px; font-weight: 600; color: var(--ink); }
-.ringtext i { font-style: normal; font-size: 9px; color: var(--muted-fg); margin-top: 2px; }
+.ringtext b { font-size: 12px; font-weight: 500; color: var(--muted-fg); }
+.ringtext i { font-style: normal; font-size: 9px; color: color-mix(in oklab, var(--muted-fg) 70%, transparent); margin-top: 2px; }
 .ring.spinning svg { animation: ringspin 7s linear infinite; }
 @keyframes ringspin { to { transform: rotate(360deg); } }
 
