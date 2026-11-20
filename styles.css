@@ -140,7 +140,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 
 /* ---------- running question ---------- */
 .run { flex: 1; display: flex; flex-direction: column; padding: 26px 32px; gap: 13px; min-height: 0; }
-.runtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.runtop { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .runtop .left { display: flex; gap: 10px; align-items: center; flex: 1; }
 .tag {
   font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11.5px; font-weight: 500;
@@ -269,7 +269,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .tally i { width: 3px; height: 14px; border-radius: 1.5px; flex: 0 0 auto; background: color-mix(in oklab, var(--muted-fg) 38%, transparent); }
 .tally i.ok { background: var(--good); cursor: pointer; }
 .tally i.no { background: var(--bad); cursor: pointer; }
-.tally i.skip { background: #fff; }
+.tally i.qskip { background: #fff; }
 .tally i.ok:hover, .tally i.no:hover { filter: brightness(1.25); }
 .tally i.ok:last-child, .tally i.no:last-child { animation: tally-pop .25s ease-out 1; }
 @keyframes tally-pop { from { transform: scaleY(0); } to { transform: scaleY(1); } }
@@ -343,7 +343,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
   .run { padding: 14px 16px; gap: 10px; }
   .runtop { flex-wrap: wrap; row-gap: 8px; }
   .runtop .left { flex: 1 1 0; min-width: 0; }
-  .tally { flex: 0 1 auto; min-width: 0; max-width: 100%; overflow-x: clip; }
+  .tally { flex-wrap: wrap; row-gap: 6px; flex: 0 0 auto; }
   .progcount { font-size: 11.5px; }
   .qtext { font-size: 15.5px; }
   .feedback { font-size: 13px; }

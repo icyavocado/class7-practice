@@ -33,12 +33,12 @@
   window.QUESTION_VOTES = window.QUESTION_VOTES || {};
   fetch('./votes.json').then(r => r.ok ? r.json() : null).then(v => { if (v) window.QUESTION_VOTES = v; }).catch(() => {});
   const withTransition = fn => {
-    if (document.startViewTransition && !noMotion.matches) {
-      // a newer view transition supersedes this one on rapid navigation; ignore the abort
-      const vt = document.startViewTransition(fn);
-      vt.ready.catch(() => {});
-      vt.finished.catch(() => {});
-    } else fn();
+    // Intra-run question swaps skip the view transition: rapid navigation keeps
+    // superseding transitions, leaving stale frozen frames (e.g. an unchanging tally).
+    if (fn === renderQuestion || !document.startViewTransition || noMotion.matches) { fn(); return; }
+    const vt = document.startViewTransition(fn);
+    vt.ready.catch(() => {});
+    vt.finished.catch(() => {});
   };
 
   const S = {
@@ -801,7 +801,7 @@
     const v = S.view; if (!v || !v.queue) return;
     const n = v.queue.length, marks = v.tally || [];
     let html = '';
-    for (let k = 0; k < n; k++) html += `<i class="${marks[k] === undefined ? 'todo' : (marks[k] === 'skip' ? 'skip' : (marks[k] ? 'ok' : 'no'))}"></i>`;
+    for (let k = 0; k < n; k++) html += `<i class="${marks[k] === undefined ? 'todo' : (marks[k] === 'skip' ? 'qskip' : (marks[k] ? 'ok' : 'no'))}"></i>`;
     t.innerHTML = html;
     t.hidden = false;
   }
