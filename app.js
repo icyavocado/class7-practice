@@ -164,7 +164,7 @@
   }
 
   /* ------------------------------------------------ appearance */
-  const APP_VERSION = 'v1.1';
+  const APP_VERSION = 'v1.2';
   const RING_C = 2 * Math.PI * 19;
   function ringInit() {
     const arc = document.getElementById('ringarc');
