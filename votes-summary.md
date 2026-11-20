@@ -1,0 +1,1 @@
+Aggregated 0 reports into votes.json — 0 questions with a community signal.

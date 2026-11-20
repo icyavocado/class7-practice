@@ -30,6 +30,8 @@
   /* Modern Web Guidance: wrap DOM updates in document.startViewTransition.
      Falls back to direct rendering, and never animates under reduced motion. */
   const noMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  window.QUESTION_VOTES = window.QUESTION_VOTES || {};
+  fetch('./votes.json').then(r => r.ok ? r.json() : null).then(v => { if (v) window.QUESTION_VOTES = v; }).catch(() => {});
   const withTransition = fn => {
     if (document.startViewTransition && !noMotion.matches) {
       // a newer view transition supersedes this one on rapid navigation; ignore the abort
@@ -615,7 +617,7 @@
       const b = $('#flagbtn'); b.classList.toggle('on', r.flagged); b.innerHTML = '⚑ ' + (r.flagged ? 'Flagged' : 'Flag');
     };
     const opts = $('#zone').querySelectorAll('.opt');
-    const answered = !!(v.tally && v.tally[v.idx] !== undefined);
+    const answered = !!(v.tally && (v.tally[v.idx] === true || v.tally[v.idx] === false));
     const rec0 = (v.answers || {})[q.id];
     if (answered) {                       // returning to an answered question: locked review
       opts.forEach((o, oi) => {
@@ -628,7 +630,10 @@
     const atLast = isExam && v.idx === qids.length - 1;
     if (nb2) {
       nb2.hidden = isExam ? atLast : !answered;
-      nb2.onclick = () => { v.idx++; withTransition(renderQuestion); };
+      nb2.onclick = () => {
+        if (isExam && !answered) (v.tally = v.tally || [])[v.idx] = 'skip';   // passed over unanswered
+        v.idx++; withTransition(renderQuestion);
+      };
     }
     const fin = document.getElementById('finishbtn');
     if (fin) {
@@ -795,7 +800,7 @@
     const v = S.view; if (!v || !v.queue) return;
     const n = v.queue.length, marks = v.tally || [];
     let html = '';
-    for (let k = 0; k < n; k++) html += `<i class="${marks[k] === undefined ? 'todo' : (marks[k] ? 'ok' : 'no')}"></i>`;
+    for (let k = 0; k < n; k++) html += `<i class="${marks[k] === undefined ? 'todo' : (marks[k] === 'skip' ? 'skip' : (marks[k] ? 'ok' : 'no'))}"></i>`;
     t.innerHTML = html;
     t.hidden = false;
   }
@@ -853,7 +858,11 @@
       renderTally();
     }
 
-    $('#fb').innerHTML = fb;
+    $('#fb').innerHTML = fb + flagHtml(q);
+    const fq = $('#flagq');
+    if (fq) fq.onclick = () => open('https://github.com/icyavocado/class7-practice/issues/new'
+      + '?template=question-report.yml&question-id=' + encodeURIComponent(q.id)
+      + '&guide-section=' + encodeURIComponent(q.source ? q.source.section : ''), '_blank');
     const nb = $('#nextbtn'), pc = $('#progcount');
     if (nb) nb.hidden = false;
     if (pc) {
@@ -877,6 +886,12 @@
     return `<span class="src">Source: <a href="${href}" target="_blank">Chapter ${q.source.chapter} → ${esc(q.source.section)}</a></span>`;
   }
   function chapterName(c) { const ch = CHAPTERS.find(x => x.id === c); return ch ? ch.name : ''; }
+  function flagHtml(q) {
+    const votes = (window.QUESTION_VOTES[q.id]) || {};
+    const n = votes.up || 0, m = votes.down || 0;
+    const signal = (n || m) ? ` · <span class="cvsig">${m} community report${m === 1 ? '' : 's'}${n ? `, ${n} endorse${n === 1 ? 's' : ''}` : ''}</span>` : '';
+    return `<button class="setbtn flagq" id="flagq" title="Open a GitHub issue to endorse or report this question">Report question</button>${signal}`;
+  }
 
   /* ------------------------------------------------ summaries */
   function showChapterSummary() {

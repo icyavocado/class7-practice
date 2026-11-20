@@ -269,6 +269,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .tally i { width: 3px; height: 14px; border-radius: 1.5px; flex: 0 0 auto; background: color-mix(in oklab, var(--muted-fg) 38%, transparent); }
 .tally i.ok { background: var(--good); cursor: pointer; }
 .tally i.no { background: var(--bad); cursor: pointer; }
+.tally i.skip { background: #fff; }
 .tally i.ok:hover, .tally i.no:hover { filter: brightness(1.25); }
 .tally i.ok:last-child, .tally i.no:last-child { animation: tally-pop .25s ease-out 1; }
 @keyframes tally-pop { from { transform: scaleY(0); } to { transform: scaleY(1); } }
