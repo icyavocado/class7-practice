@@ -27,7 +27,7 @@ jobs:
           NAME="class7-practice-${GITHUB_REF_NAME}"
           mkdir -p "$NAME"
           cp index.html app.js store.js questions.js styles.css \
-             geist-var.woff2 geist-mono-var.woff2 drivers-guide-2026.md "$NAME/"
+             geist-var.woff2 geist-mono-var.woff2 drivers-guide-2026.md lib/pdf.min.js lib/pdf.worker.min.js "$NAME/"
           zip -qr "$NAME.zip" "$NAME"
 
       - name: Create GitHub release

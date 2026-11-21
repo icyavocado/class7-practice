@@ -40,6 +40,23 @@ in the guide. Runs entirely in your browser.
   into `votes.json`, and answered questions show a small "n community reports" chip.
 - **No dependencies** — five static files and two fonts; no build step, no framework.
 
+## Your own practice tests (PDF → questions)
+
+Use the app as a skeleton for any study guide:
+
+- **Settings → Practice test → ＋** (or "New practice test from a PDF").
+- Drop a **text-based PDF**, review the auto-detected chapters, set how many
+  questions per chapter (5/10/20/50 — editable per chapter), and hit **Generate**.
+- Questions are written by your own AI provider: pick **OpenAI-compatible**
+  (OpenAI, OpenRouter, Groq, local Ollama — base URL + key + model), **Anthropic**,
+  or **Gemini**. The key stays on your device and is called directly from your browser;
+  costs show up on your provider bill (a few thousand tokens per chapter).
+- The generated bank gets its own chapters, tally, progress, and modes — stored
+  separately from the built-in Alberta bank; switch or delete it anytime in settings.
+- Works on GitHub Pages and from the offline bundle. Generation needs internet +
+  a working API key; everything after that is offline. Scanned/image-only PDFs
+  (no text layer) aren't supported yet.
+
 ## Content & fact-checking
 
 The question bank is derived from the [official guide](drivers-guide-2026.md)

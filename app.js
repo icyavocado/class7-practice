@@ -51,15 +51,8 @@
 
   /* ------------------------------------------------ boot */
   DB.ready().then(() => {
-    S.bank = (window.QUESTIONS || []).slice();
-    S.bank.forEach(q => {
-      S.byId.set(q.id, q);
-      if (!S.byChapter.has(q.chapter)) S.byChapter.set(q.chapter, []);
-      S.byChapter.get(q.chapter).push(q);
-    });
-    if (DB.isFallback()) $('#dbwarn').hidden = false;
-    return Promise.all([DB.getAllState(), DB.getSessions(), DB.getMeta('settings'), DB.getMeta('profiles')]);
-  }).then(([states, sessions, settings, profiles]) => {
+    return Promise.all([DB.getAllState(), DB.getSessions(), DB.getMeta('settings'), DB.getMeta('profiles'), DB.getMeta('banks'), DB.getMeta('genconf')]);
+  }).then(async ([states, sessions, settings, profiles, banksMeta, genconf]) => {
     profilesReg = (profiles && typeof profiles === 'object' && Object.keys(profiles).length) ? profiles : {};
     if (settings) Object.assign(S.settings, settings);
     // resolve the active profile: last used name, defaulting to 'Main'
@@ -81,6 +74,21 @@
     refreshProfRow();
     applyAppearance(S.settings.appearance || localStorage.getItem('appearance') || 'system');
     const hash = location.hash.slice(1);
+   // custom banks + active bank
+   S.banks = banksMeta || {};
+   S.genconf = genconf || { provider: 'openai', key: '', base: '', model: '' };
+   S.activeBank = S.settings.activeBank || 'default';
+   if (S.activeBank !== 'default' && !S.banks[S.activeBank]) { S.activeBank = 'default'; S.settings.activeBank = 'default'; DB.putMeta('settings', S.settings); }
+   if (S.activeBank === 'default') setBankData(window.QUESTIONS || [], CHAPTERS);
+   else setBankData(S.banks[S.activeBank].questions, S.banks[S.activeBank].chapters);
+   // a stashed run must belong to the active bank
+   if (S.stash && (!S.stash.queue || !S.stash.queue.every(id => S.byId.has(id)))) S.stash = null;
+    if (!S.stash && (location.hash === '#resume' || /^(exam|chapter|review)\//.test(location.hash.slice(1)))) {
+      profilesReg = await DB.getMeta('profiles') || profilesReg;
+      const retry = (profilesReg[name] || {}).stash;
+      if (retry && retry.queue && retry.queue.every && retry.queue.every(id => S.byId.has(id))) S.stash = retry;
+      navReplace(hashFor(S.view && S.view.mode, S.view && S.view.idx, false));
+    }
     if (hash.indexOf('p1') === 0) {
       decodeShareLink(hash).then(function(data) {
         S.pendingShareData = data; S.pendingShareError = null;
@@ -114,6 +122,21 @@
     S.settings.profile = name;
   }
   function saveCurrentProfile() {
+      if (!S.P) return;
+      if (S.activeBank !== 'default') commitBankProgress();
+      const name = currentProfile();
+      const base = profilesReg[name] || { created: Date.now() };
+      const rec = {
+        p: base.p || [], sessions: S.sessions.slice(), banks: base.banks || {},
+        stash: S.stash ? JSON.parse(JSON.stringify(S.stash)) : null,
+        created: base.created || Date.now(),
+      };
+      if (S.activeBank === 'default') rec.p = [...S.P.values()].map(r => ({ ...r }));
+      else rec.banks[S.activeBank] = { p: [...S.P.values()].map(r => ({ ...r })) };
+      profilesReg[name] = rec;
+      if (window.DB) DB.putMeta('profiles', profilesReg);
+    }
+function saveCurrentProfile() {
     if (!S.P) return;
     const name = currentProfile();
     profilesReg[name] = {
@@ -151,6 +174,24 @@
     return r;
   }
   function persist(qid) {
+      const r = S.P.get(qid); r.updatedAt = Date.now();
+      if (S.activeBank === 'default') DB.putState(r);
+      else commitBankProgress();
+    }
+    let saveBankTimer = 0;
+    function saveBankProgress() {
+      clearTimeout(saveBankTimer);
+      saveBankTimer = setTimeout(commitBankProgress, 250);
+    }
+    function commitBankProgress() {
+      if (!S.P || S.activeBank === 'default') return;
+      const name = currentProfile();
+      const base = profilesReg[name] || { created: Date.now() };
+      const banks = base.banks || (base.banks = {});
+      banks[S.activeBank] = { p: [...S.P.values()].map(r => Object.assign({}, r)) };
+      base.banks = banks; profilesReg[name] = base; DB.putMeta('profiles', profilesReg);
+    }
+function persist(qid) {
     const r = S.P.get(qid); r.updatedAt = Date.now();
     DB.putState(r);
   }
@@ -247,6 +288,7 @@
     const skipLbl = activeRun ? (S.view.mode === 'exam' ? (compact ? 'Skip' : 'Skip test') : (compact ? 'Skip' : 'Skip practice')) : null;
     const resumeLbl = S.stash ? (S.stash.mode === 'exam' ? (compact ? 'Resume' : 'Resume test') : (compact ? 'Resume' : 'Resume practice')) : null;
     updateRing(activeRun);
+    paintBankRow();
     $('#topstats').innerHTML =
       (skipLbl ? `<button class="runpill" data-act="skip">${esc(skipLbl)}</button>` : '') +
       (resumeLbl ? `<button class="runpill fill" data-act="resume">${esc(resumeLbl)}</button>` : '');
@@ -480,7 +522,7 @@
         <button class="modecard" id="m-review" ${reviewCount ? '' : 'disabled'}><b>Review (${reviewCount})</b><span class="desc">Repeated practice on missed and flagged questions.</span></button>
       </div>
       <div class="muted" style="margin-bottom:2px">Pick a chapter to practice:</div>
-      <div id="chapters">${CHAPTERS.map(c => {
+      <div id="chapters">${S.chapters.map(c => {
         const st = chapterStats(c.id);
         const cls = !st.total ? '' : (st.pct === 1 ? 'ok' : (st.pct < 0.4 ? 'weak' : (st.pct < 0.7 ? 'warn' : '')));
         const label = st.total ? Math.round(st.pct * 100) + '%' : '—';
@@ -506,7 +548,7 @@
   }
   function weakestChapter() {
     let best = null;
-    for (const c of CHAPTERS) {
+    for (const c of S.chapters) {
       if (!S.byChapter.get(c.id)) continue;
       if (!best || chapterStats(c.id).pct < chapterStats(best.id).pct) best = c;
     }
@@ -549,15 +591,15 @@
     const total = S.bank.length || 1;
     const want = Math.min(S.settings.examLen, S.bank.length);
     const picks = [];
-    const per = CHAPTERS.map(c => Math.floor((S.byChapter.get(c.id) || []).length / total * want));
+    const per = S.chapters.map(c => Math.floor((S.byChapter.get(c.id) || []).length / total * want));
     let sum = per.reduce((a, b) => a + b, 0);
     let pickOffset = 0;
     while (sum < want) {                       // distribute remainder
-      const c = CHAPTERS[(want - sum + pickOffset) % CHAPTERS.length];
+      const c = S.chapters[(want - sum + pickOffset) % S.chapters.length];
       if (S.byChapter.get(c.id)) per[c.id - 1]++;
       sum++; pickOffset = (pickOffset + 1) % 7;
     }
-    CHAPTERS.forEach(c => {
+    S.chapters.forEach(c => {
       const pool = shuffle((S.byChapter.get(c.id) || []).slice());
       picks.push(...pool.slice(0, per[c.id - 1]));
     });
@@ -698,6 +740,297 @@
     withTransition(renderQuestion);
   }
   const isReview = v => v.mode === 'review';
+
+    /* ================================================ custom banks: PDF -> practice test */
+    function getBanks() { if (!S.banks) S.banks = {}; return S.banks; }
+    function setBankData(questions, chapters) {
+      S.bank = questions.slice();
+      S.chapters = chapters.slice();
+      S.byId = new Map(S.bank.map(q => [q.id, q]));
+      S.byChapter = new Map();
+      S.bank.forEach(q => {
+        if (!S.byChapter.has(q.chapter)) S.byChapter.set(q.chapter, []);
+        S.byChapter.get(q.chapter).push(q);
+      });
+    }
+    function paintBankRow() {
+      const row = document.getElementById('bankrow'); if (!row) return;
+      const banks = getBanks();
+      const opts = ['<option value="default"' + (S.activeBank === 'default' ? ' selected' : '') + '>Alberta guide (built-in)</option>']
+        .concat(Object.keys(banks).map(bid => '<option value="' + bid + '"' + (S.activeBank === bid ? ' selected' : '') + '>' + esc(banks[bid].name) + '</option>'));
+      row.innerHTML = '<select id="bankpick" class="profpick" title="Switch practice test">' + opts.join('') + '</select>' +
+        (S.activeBank === 'default'
+          ? '<button class="profbtn" id="banknew" title="Create a practice test from a PDF">+</button>'
+          : '<button class="profbtn" id="bankdel" title="Delete this practice test">\u00d7</button>');
+      document.getElementById('bankpick').onchange = () => switchBank(document.getElementById('bankpick').value);
+      const nw = document.getElementById('banknew');
+      if (nw) nw.onclick = openGenerator;
+      const del = document.getElementById('bankdel');
+      if (del) del.onclick = () => { if (confirm('Delete this practice test and its progress?')) deleteBank(S.activeBank); };
+      const sb = document.getElementById('sharebtn'), rb = document.getElementById('restorebtn');
+      const hideShare = S.activeBank !== 'default';
+      if (sb) sb.hidden = hideShare;
+      if (rb) rb.hidden = hideShare;
+    }
+    async function switchBank(bid) {
+      if (!bid || bid === S.activeBank) return;
+      const banks = getBanks();
+      if (bid !== 'default' && !banks[bid]) return;
+      if (S.view && S.view.mode && S.view.mode !== 'idle' && !S.view.done) { parkRun('#home'); S.view = { mode: 'idle' }; }
+      S.activeBank = bid; S.settings.activeBank = bid; DB.putMeta('settings', S.settings);
+      if (bid === 'default') {
+        setBankData(window.QUESTIONS || [], CHAPTERS);
+        const states = await DB.getAllState();
+        S.P = new Map(states.map(r => [r.qid, Object.assign({}, r)]));
+        S.stash = null;
+      } else {
+        const b = banks[bid];
+        setBankData(b.questions, b.chapters);
+        const prof = profilesReg[currentProfile()] || {};
+        const bp = (prof.banks || {})[bid] || { p: [], sessions: [] };
+        S.P = new Map(bp.p.map(r => [r.qid, Object.assign({}, r)]));
+        S.stash = null;
+      }
+      gotoIdle();
+    }
+    function deleteBank(bid) {
+      if (bid === 'default') return;
+      const banks = getBanks(); delete banks[bid]; DB.putMeta('banks', banks);
+      if (S.activeBank === bid) switchBank('default'); else paintBankRow();
+    }
+    async function openGenerator() {
+      document.getElementById('settings').hidden = true;
+      gearbtn.setAttribute('aria-expanded', 'false');
+      await ensurePdfJs();
+      const h = location.hash.slice(1);
+      if (h !== 'generate') history.pushState(null, '', '#generate');
+      S.view = { mode: 'generator' }; S.gen = { cancelled: false, file: null, pages: null, chaps: null, counts: null, bankName: '' };
+      navReplace('#generate'); renderGenerator();
+    }
+    function renderGenerator() {
+      const conf = getGenConf();
+      zone('<section class="card wrap generator" aria-label="Generate a practice test">' +
+        '<div style="font-size:15px;font-weight:600;margin:0 0 10px">New practice test from a PDF</div>' +
+        '<div class="muted">Drop a text-based PDF (study guide, course notes), review the chapters, and generate a multiple-choice practice test with your own AI provider.</div>' +
+        '<div class="genstep"><div class="setlabel">1 | AI provider (key stays on this device)</div>' +
+        '<div class="profrow"><select id="genprovider" class="profpick">' +
+        '<option value="openai"' + (conf.provider === 'openai' ? ' selected' : '') + '>OpenAI-compatible (OpenAI, OpenRouter, Groq, Ollama\u2026)</option>' +
+        '<option value="anthropic"' + (conf.provider === 'anthropic' ? ' selected' : '') + '>Anthropic</option>' +
+        '<option value="gemini"' + (conf.provider === 'gemini' ? ' selected' : '') + '>Google Gemini</option>' +
+        '</select><input id="genkey" class="sharelink" type="password" placeholder="API key" value="' + esc(conf.key) + '" style="max-width:210px">' +
+        '<input id="genbase" class="sharelink" placeholder="Base URL" value="' + esc(conf.base) + '" style="max-width:220px">' +
+        '<input id="genmodel" class="sharelink" placeholder="Model" value="' + esc(conf.model) + '" style="max-width:180px">' +
+        '<button class="setbtn" id="gentest">Test</button></div><div class="muted" id="gentestout" style="font-size:11.5px"></div></div>' +
+        '<div class="genstep"><div class="setlabel">2 | PDF</div>' +
+        '<div class="genzone" id="genzone"><input type="file" id="genfile" accept="application/pdf" hidden><button class="setbtn" id="genpick">Choose PDF\u2026</button> <span class="muted">or drop a file here</span> <span id="genfileinfo" class="muted"></span></div>' +
+        '<div class="muted" id="genextract"></div></div>' +
+        '<div class="genstep" id="genchapstep" hidden><div class="setlabel">3 | Chapters and questions per chapter</div>' +
+        '<div id="genchapters"></div><div class="profrow" style="margin-top:8px">' +
+        '<button class="setbtn" id="genall">Set all to\u2026</button>' +
+        '<select id="gencountall" class="profpick"><option>5</option><option selected>10</option><option>20</option><option>50</option></select>' +
+        '<input id="genbankname" class="sharelink" style="max-width:220px" placeholder="Test name (from the file)"></div></div>' +
+        '<div class="genstep"><button class="btn" id="genrun" hidden>Generate</button>' +
+        '<button class="setbtn" id="gencancel" hidden>Cancel</button>' +
+        '<div class="muted" id="genprogress"></div><div id="generr" class="muted"></div></div></section>');
+      $('#genprovider').onchange = () => { saveGenConf(); renderGenerator(); };
+      ['genkey', 'genbase', 'genmodel'].forEach(id => { document.getElementById(id).onchange = saveGenConf; });
+      $('#gentest').onclick = testProvider;
+      $('#genpick').onclick = () => document.getElementById('genfile').click();
+      const dz = document.getElementById('genzone');
+      ['dragover', 'dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('on'); }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('on'); }));
+      dz.addEventListener('drop', e => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) pickPdf(f); });
+      document.getElementById('genfile').onchange = e => { const f = e.target.files && e.target.files[0]; if (f) pickPdf(f); };
+      document.getElementById('genall').onclick = () => { const v = document.getElementById('gencountall').value; [...document.querySelectorAll('.gcount')].forEach(i => i.value = v); saveCounts(); };
+      document.getElementById('genchapters').addEventListener('input', saveCounts);
+      document.getElementById('genrun').onclick = runGeneration;
+      document.getElementById('gencancel').onclick = () => { S.gen.cancelled = true; document.getElementById('genprogress').textContent = 'Cancelling...'; };
+    }
+    function gotoGenStep3() {
+      document.getElementById('genchapstep').hidden = false;
+      document.getElementById('genrun').hidden = false;
+      if (!document.getElementById('genbankname').value) document.getElementById('genbankname').value = S.gen.bankName;
+      document.getElementById('genchapters').innerHTML = S.gen.chaps.map((c, i) =>
+        '<div class="profrow" style="margin:6px 0">' +
+        '<input class="sharelink gname" data-i="' + i + '" style="max-width:260px" value="' + esc(c.name) + '">' +
+        '<input class="sharelink gcount" data-i="' + i + '" type="number" min="1" max="50" value="' + ((S.gen.counts || [])[i] || 10) + '" style="max-width:70px">' +
+        '<span class="muted">pages ' + c.from + ' \u2013 ' + c.to + '</span></div>').join('');
+    }
+    function saveCounts() {
+      const counts = [];
+      document.querySelectorAll('.gcount').forEach(i => counts[+i.dataset.i] = Math.max(1, Math.min(50, +i.value || 10)));
+      document.querySelectorAll('.gname').forEach(i => { S.gen.chaps[+i.dataset.i].name = i.value; });
+      S.gen.counts = counts;
+    }
+    function saveGenConf() {
+      const conf = {
+        provider: document.getElementById('genprovider').value,
+        key: document.getElementById('genkey').value,
+        base: document.getElementById('genbase').value.trim(),
+        model: document.getElementById('genmodel').value.trim(),
+      };
+      S.genconf = conf;
+      if (window.DB) DB.putMeta('genconf', conf);
+      return conf;
+    }
+    function getGenConf() { S.genconf = S.genconf || { provider: 'openai', key: '', base: '', model: '' }; return S.genconf; }
+    async function testProvider() {
+      const conf = saveGenConf();
+      const out = document.getElementById('gentestout');
+      out.textContent = 'Testing...';
+      try {
+        const t = await callProvider(conf, 'Reply with exactly: OK');
+        out.textContent = t.includes('OK') ? 'Connected \u2014 provider works.' : 'Connected \u2014 unexpected reply: ' + t.slice(0, 80);
+      } catch (err) { out.textContent = 'Failed \u2014 ' + String(err.message || err).slice(0, 140); }
+    }
+    async function ensurePdfJs() {
+      if (window.pdfjsLib) return;
+      await new Promise((res, rej) => {
+        const s2 = document.createElement('script');
+        s2.src = 'lib/pdf.min.js'; s2.onload = res; s2.onerror = () => rej(new Error('Could not load the PDF reader'));
+        document.head.appendChild(s2);
+      });
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+    }
+    async function pickPdf(file) {
+      S.gen.file = file; S.gen.cancelled = false; S.gen.chaps = null;
+      document.getElementById('genfileinfo').textContent = file.name + ' \u00b7 ' + (file.size / 1024 | 0) + ' KB';
+      const out = document.getElementById('genextract');
+      out.textContent = 'Extracting text...';
+      try {
+        const pages = await pdfToText(file, (p, n) => { out.textContent = 'Extracting text... page ' + p + '/' + n; });
+        S.gen.pages = pages;
+        S.gen.chaps = splitChapters(pages);
+        S.gen.bankName = file.name.replace(/\.pdf$/i, '').slice(0, 40);
+        out.textContent = pages.length + ' pages, ' + pages.reduce((a, p) => a + p.text.length, 0) + ' chars of text extracted.';
+      } catch (err) {
+        out.textContent = 'Could not read that PDF \u2014 ' + String(err.message || err).slice(0, 120) + ' (image-only/scanned PDFs are not supported yet).';
+        return;
+      }
+      gotoGenStep3();
+    }
+    async function pdfToText(file, onProgress) {
+      await ensurePdfJs();
+      const buf = await file.arrayBuffer();
+      const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+      const pages = [];
+      for (let p = 1; p <= doc.numPages; p++) {
+        const c = await (await doc.getPage(p)).getTextContent();
+        pages.push({ page: p, text: c.items.map(it => it.str).join(' ').replace(/\s+/g, ' ').trim() });
+        if (onProgress) onProgress(p, doc.numPages);
+      }
+      return pages;
+    }
+    function splitChapters(pages) {
+      const out = [];
+      const seen = {};
+      for (const pg of pages) {
+        if (!pg.text) continue;
+        const m = pg.text.match(/(?:chapter|part|section)\s+(\d{1,2})\b[.:\u2014-]?\s*([A-Za-z][^\n]{3,60})/i) || pg.text.match(/\b([A-Z][A-Za-z,'\u2019 -]{8,60})\b/);
+        const name = (m && (m[2] || m[3])) ? (m[2] || m[3]).trim().slice(0, 40) : (pg.text.slice(0, 24) || 'Pages ' + pg.page);
+        const key = name.toLowerCase();
+        const last = out[out.length - 1];
+        if (seen[key] && last) { last.to = pg.page; continue; }
+        if (out.length >= 20) { last.to = pg.page; continue; }
+        seen[key] = 1;
+        out.push({ from: pg.page, to: pg.page, name });
+      }
+      return out.length ? out : [{ from: pages[0].page, to: pages[pages.length - 1].page, name: 'Full document' }];
+    }
+    async function runGeneration() {
+      const conf = saveGenConf();
+      if (!S.gen.chaps) return;
+      saveCounts();
+      const name = (document.getElementById('genbankname').value || S.gen.bankName || 'My practice test').trim();
+      S.gen.cancelled = false;
+      document.getElementById('genrun').hidden = true;
+      document.getElementById('gencancel').hidden = false;
+      const out = document.getElementById('genprogress'), errBox = document.getElementById('generr');
+      errBox.textContent = '';
+      const questions = [];
+      let failure = null;
+      for (let ci = 0; ci < S.gen.chaps.length; ci++) {
+        if (S.gen.cancelled) { out.textContent = 'Cancelled.'; break; }
+        const ch = S.gen.chaps[ci];
+        out.textContent = 'Generating... chapter ' + (ci + 1) + '/' + S.gen.chaps.length + ' (' + ch.name + ')';
+        const material = S.gen.pages.filter(p => p.page >= ch.from && p.page <= ch.to)
+          .map(p => '[page ' + p.page + '] ' + p.text).join('\n').slice(0, 24000);
+        const user = [
+          'Create exactly ' + (S.gen.counts[ci] || 10) + ' multiple-choice practice questions grounded STRICTLY in the material below.',
+          'Rules: exactly 4 options per question; exactly one unambiguously correct ("answer" is 0-3); paraphrase, do not quote large chunks; one-sentence "explanation" tied to the material; "section" = a 3-6 word heading for that part of the material; "page" = the page number shown in brackets, or "" if unknown.',
+          'Output STRICT JSON only: a single array of objects with keys question, options, answer, explanation, section, page. No markdown, no commentary.',
+          '',
+          'MATERIAL:',
+          material,
+        ].join('\n');
+        try {
+          const text = await callProvider(conf, user);
+          questions.push(...parseQuestionJSON(text, ch, ci, S.gen.counts[ci] || 10));
+          out.textContent = 'Generating... chapter ' + (ci + 1) + '/' + S.gen.chaps.length + ' done \u2014 ' + questions.length + ' questions so far';
+        } catch (e2) { failure = e2; break; }
+      }
+      document.getElementById('gencancel').hidden = true;
+      if (failure && !questions.length) {
+        errBox.textContent = String(failure.message || failure).slice(0, 200);
+        document.getElementById('genrun').hidden = false;
+        return;
+      }
+      const bankId = 'b' + Date.now().toString(36);
+      const banks = getBanks();
+      banks[bankId] = { id: bankId, name, createdAt: Date.now(), questions, chapters: S.gen.chaps.map((c, i) => ({ id: i + 1, name: c.name })) };
+      DB.putMeta('banks', banks);
+      out.textContent = 'Done \u2014 ' + questions.length + ' questions across ' + S.gen.chaps.length + ' chapters. Switching to it...';
+      await switchBank(bankId);
+    }
+    function parseQuestionJSON(text, ch, ci, count) {
+      const m = text.match(/\[[\s\S]*\]/);
+      if (!m) throw new Error('The reply contained no JSON array' + (text ? ' (' + text.slice(0, 40) + '\u2026)' : '.'));
+      const arr = JSON.parse(m[0]);
+      const out = [], seen = {};
+      for (const o of (Array.isArray(arr) ? arr : [])) {
+        if (!o || !Array.isArray(o.options) || o.options.length !== 4) continue;
+        if (!o.question || typeof o.question !== 'string') continue;
+        const key = o.question.toLowerCase().replace(/[^a-z0-9 ]+/g, '').slice(0, 60);
+        if (seen[key]) continue; seen[key] = 1;
+        const ans = Math.max(0, Math.min(3, +o.answer || 0));
+        out.push({
+          id: 'gen-' + ci + '-' + (out.length + 1),
+          chapter: ci + 1, category: 'custom',
+          question: o.question, options: o.options.map(x => String(x)),
+          answer: ans, explanation: String(o.explanation || ''),
+          source: { chapter: ci + 1, section: String(o.section || ch.name), anchor: '', page: String(o.page || ch.from || '') }
+        });
+        if (out.length >= count) break;
+      }
+      if (!out.length) throw new Error('The reply contained no usable questions.');
+      return out;
+    }
+    async function callProvider(conf, user) {
+      const sys = 'You write rigorous multiple-choice practice questions grounded in provided study material. Output STRICT JSON only \u2014 no prose, no markdown fences.';
+      if (conf.provider === 'anthropic') {
+        const r = await fetch((conf.base || 'https://api.anthropic.com/v1').replace(/\/+$/, '') + '/messages', { method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-api-key': conf.key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({ model: conf.model, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: user }] }) });
+        if (!r.ok) throw new Error('Anthropic ' + r.status + ' \u2014 ' + (await r.text()).slice(0, 120));
+        const j = await r.json();
+        return (j.content || []).map(c => c.text || '').join('');
+      }
+      if (conf.provider === 'gemini') {
+        const r = await fetch((conf.base || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/+$/, '') + '/models/' + encodeURIComponent(conf.model) + ':generateContent?key=' + encodeURIComponent(conf.key), { method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }] }) });
+        if (!r.ok) throw new Error('Gemini ' + r.status + ' \u2014 ' + (await r.text()).slice(0, 120));
+        const j = await r.json();
+        const parts = (j.candidates || []).map(c => c.content).filter(Boolean).flatMap(c => (c.parts || []).map(p => p.text || ''));
+        return parts.join('');
+      }
+      const r = await fetch((conf.base || 'https://api.openai.com/v1').replace(/\/+$/, '') + '/chat/completions', { method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + conf.key },
+        body: JSON.stringify({ model: conf.model, temperature: 0.3, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }] }) });
+      if (!r.ok) throw new Error('Provider ' + r.status + ' \u2014 ' + (await r.text()).slice(0, 120));
+      const j = await r.json();
+      return (j.choices || [])[0].message.content;
+    }
 
   /* ------------------------------------------------ url routing: back/forward/refresh */
   function hashFor(mode, idx, done) {
@@ -1020,11 +1353,11 @@
 
   function src(q) {
     if (!q.source) return '';
-    const a = q.source.anchor || '';
-    const href = './drivers-guide-2026.md' + a;
+    if (!q.source.anchor) return `<span class="src">Source: your PDF — ${esc(q.source.section || 'section')}${q.source.page ? ', page ' + esc(q.source.page) : ''}</span>`;
+    const href = './drivers-guide-2026.md' + q.source.anchor;
     return `<span class="src">Source: <a href="${href}" target="_blank">Chapter ${q.source.chapter} → ${esc(q.source.section)}</a></span>`;
   }
-  function chapterName(c) { const ch = CHAPTERS.find(x => x.id === c); return ch ? ch.name : ''; }
+  function chapterName(c) { const ch = S.chapters.find(x => x.id === c); return ch ? ch.name : ''; }
   function flagHtml(q) {
     const votes = (window.QUESTION_VOTES[q.id]) || {};
     const n = votes.up || 0, m = votes.down || 0;
@@ -1067,7 +1400,7 @@
     const skipped = v.queue.filter(id => !v.answers[id]);
     skipped.forEach(id => { const r = rec(id); if (r.status === 'unseen') { r.status = 'review'; persist(id); } });
     const missed = v.queue.map(id => ({ q: S.byId.get(id), a: v.answers[id] })).filter(x => !x.a || !x.a.correct);
-    const lines = CHAPTERS.map(c => {
+    const lines = S.chapters.map(c => {
       const rows = v.queue.map(id => S.byId.get(id)).filter(q => q.chapter === c.id);
       if (!rows.length) return '';
       const ok = rows.filter(q => v.answers[q.id] && v.answers[q.id].correct).length;
