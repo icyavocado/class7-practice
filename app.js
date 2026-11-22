@@ -299,7 +299,7 @@
     const activeRun = S.view && S.view.mode && S.view.mode !== 'idle' && !S.view.done;
     const compact = matchMedia('(max-width: 480px)').matches;
     const skipLbl = activeRun ? (S.view.mode === 'exam' ? (compact ? 'Skip' : 'Skip test') : (compact ? 'Skip' : 'Skip practice')) : null;
-    const resumeLbl = S.stash ? (S.stash.mode === 'exam' ? (compact ? 'Resume' : 'Resume test') : (compact ? 'Resume' : 'Resume practice')) : null;
+    const resumeLbl = (!activeRun && S.stash) ? (S.stash.mode === 'exam' ? (compact ? 'Resume' : 'Resume test') : (compact ? 'Resume' : 'Resume practice')) : null;
     updateRing(activeRun);
     paintBankRow();
     $('#topstats').innerHTML =
@@ -712,6 +712,17 @@
     renderTop();
     renderTally();
     navReplace(hashFor(v.mode, v.idx, false));
+    syncStash();
+  }
+  // keeps the parked run in the profile meta continuously: an unload-time
+  // IndexedDB write can fail to flush, so the stash is persisted as the run
+  // goes (pagehide remains only as a last-chance catch).
+  function syncStash() {
+    const v = S.view;
+    if (!v || !v.mode || v.mode === 'idle' || v.done) return;
+    const { timer, ...rest } = v;
+    S.stash = JSON.parse(JSON.stringify(rest));
+    saveCurrentProfile();
   }
   function gotoQuestion(k) {
     history.pushState(null, '', hashFor(S.view, k));
@@ -1373,9 +1384,6 @@
       if (!sigEl) return;
       sigEl.textContent = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? 's' : '') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? 's' : '') : ''}`;
     }).catch(() => {});
-    if (fq) fq.onclick = () => open('https://github.com/icyavocado/class7-practice/issues/new'
-      + '?template=question-report.yml&question-id=' + encodeURIComponent(q.id)
-      + '&guide-section=' + encodeURIComponent(q.source ? q.source.section : ''), '_blank');
     const nb = $('#nextbtn'), pc = $('#progcount');
     if (nb) nb.hidden = false;
     if (pc) {
