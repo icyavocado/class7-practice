@@ -279,6 +279,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 }
 .scrubbubble.locked { color: var(--muted-fg); border-color: var(--border); }
 .votebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.runtopsig { font: 600 10.5px 'Geist Mono', ui-monospace, monospace; padding: 3px 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--muted-fg); }
 .tally i.ok:hover, .tally i.no:hover { filter: brightness(1.25); }
 .tally i.ok:last-child, .tally i.no:last-child { animation: tally-pop .25s ease-out 1; }
 @keyframes tally-pop { from { transform: scaleY(0); } to { transform: scaleY(1); } }

@@ -713,6 +713,31 @@
     renderTally();
     navReplace(hashFor(v.mode, v.idx, false));
     syncStash();
+    refreshSignalFor(q);
+  }
+  // shows the community signal next to the tally on every rendered question
+  // (locked revisits included); fresh questions simply stay silent until votes
+  // exist.
+  function refreshSignalFor(q) {
+    if (window.__sigPending === q.id) return;
+    window.__sigPending = q.id;
+    reportSignal(S.activeBank || 'default', q.id).then(function (sig) {
+      window.__sigPending = q.id === window.__sigPending ? null : window.__sigPending;
+      (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = sig;
+      const tally = document.getElementById('tally');
+      if (!tally || !tally.parentElement) return;
+      let chip = tally.parentElement.querySelector('.runtopsig');
+      if (!chip) {
+        chip = document.createElement('span'); chip.className = 'cvsig runtopsig';
+        tally.insertAdjacentElement('afterend', chip);
+      }
+      const up = sig.up || 0, down = sig.down || 0;
+      const bits = [];
+      if (up) bits.push(up + ' endorse' + (up === 1 ? '' : 's'));
+      if (down) bits.push(down + ' report' + (down === 1 ? '' : 's'));
+      if (bits.length) { chip.textContent = bits.join(' \u00b7 '); chip.style.display = ''; }
+      else chip.style.display = 'none';
+    }).catch(function () { window.__sigPending = null; });
   }
   // keeps the parked run in the profile meta continuously: an unload-time
   // IndexedDB write can fail to flush, so the stash is persisted as the run
@@ -1364,7 +1389,10 @@
         document.getElementById('votegood').textContent = '👍 Good';
         document.getElementById('votereport').textContent = '👎 Report';
         const sig = (window.SIGNAL_CACHE[q.id]) || { up: 0, down: 0 };
-        const label = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? '' : 's') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? '' : 's') : ''}`;
+        const bits = [];
+        if (sig.up) bits.push(sig.up + ' endorse' + (sig.up === 1 ? '' : 's'));
+        if (sig.down) bits.push(sig.down + ' report' + (sig.down === 1 ? '' : 's'));
+        const label = bits.join(' · ');
         let sigEl = document.querySelector('#fb .cvsig');
         if (!sigEl && (sig.up || sig.down)) {
           sigEl = document.createElement('span'); sigEl.className = 'cvsig';
