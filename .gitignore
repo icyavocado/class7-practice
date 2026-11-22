@@ -3,3 +3,6 @@ node_modules/
 .DS_Store
 **/.taste-skill/chrome-check/
 shots/
+node_modules/
+test-results/
+playwright-report/

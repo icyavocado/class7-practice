@@ -136,17 +136,7 @@
       profilesReg[name] = rec;
       if (window.DB) DB.putMeta('profiles', profilesReg);
     }
-function saveCurrentProfile() {
-    if (!S.P) return;
-    const name = currentProfile();
-    profilesReg[name] = {
-      p: [...S.P.values()].map(r => ({ ...r })),
-      sessions: S.sessions.slice(),
-      stash: S.stash ? JSON.parse(JSON.stringify(S.stash)) : null,
-      created: (profilesReg[name] && profilesReg[name].created) || Date.now(),
-    };
-    if (window.DB) DB.putMeta('profiles', profilesReg);
-  }
+
   function currentProfile() { return (S.settings && S.settings.profile) || 'Main'; }
   function switchProfile(name) {
     if (!profilesReg[name] || name === currentProfile()) return;
@@ -191,10 +181,6 @@ function saveCurrentProfile() {
       banks[S.activeBank] = { p: [...S.P.values()].map(r => Object.assign({}, r)) };
       base.banks = banks; profilesReg[name] = base; DB.putMeta('profiles', profilesReg);
     }
-function persist(qid) {
-    const r = S.P.get(qid); r.updatedAt = Date.now();
-    DB.putState(r);
-  }
 
   /* confidence: known / total per chapter */
   function chapterStats(c) {
@@ -325,6 +311,7 @@ function persist(qid) {
       if (!name || profilesReg[name]) return;
       profilesReg[name] = { p: [], sessions: [], stash: null, created: Date.now() };
       DB.putMeta('profiles', profilesReg);
+      refreshProfRow();
       switchProfile(name);
     };
     document.getElementById('profrn').onclick = function() {
@@ -1391,6 +1378,9 @@ function persist(qid) {
     const v = S.view;
     v.done = true;
     clearInterval(v.timer);
+    S.stash = null;
+    saveCurrentProfile();
+    navPush(hashFor(v.mode, v.idx, v.done));
     const pct = v.queue.length ? Math.round(v.correct / v.queue.length * 100) : 0;
     const pass = pct / 100 >= S.settings.passMark;
     const session = { mode: 'exam', date: new Date().toISOString(), score: pct, correct: v.correct, total: v.queue.length, passed: pass, seconds: S.settings.examMinutes * 60 - Date.now() / 1000 };

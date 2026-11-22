@@ -1,0 +1,28 @@
+{
+  "name": "i-want-to-learn",
+  "version": "1.0.0",
+  "description": "[![Release](https://img.shields.io/github/v/release/icyavocado/class7-practice)](https://github.com/icyavocado/class7-practice/releases/latest) ![Tests fact-checked](https://img.shields.io/badge/questions-fact--checked%20505%2F505-3fb950) [![release](https://github.com/icyavocado/class7-practice/actions/workflows/release.yml/badge.svg)](https://github.com/icyavocado/class7-practice/actions/workflows/release.yml) [![votes](https://github.com/icyavocado/class7-practice/actions/workflows/votes.yml/badge.svg)](https://github.com/icyavocado/class7-practice/actions/workflows/votes.yml) [![License: MIT](https://img.shields.io/badge/code_license-MIT-yellow.svg)](LICENSE)",
+  "main": "app.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/icyavocado/class7-practice.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/icyavocado/class7-practice/issues"
+  },
+  "homepage": "https://github.com/icyavocado/class7-practice#readme",
+  "devDependencies": {
+    "playwright": "^1.65.1"
+  }
+}
