@@ -1364,7 +1364,7 @@
         document.getElementById('votegood').textContent = '👍 Good';
         document.getElementById('votereport').textContent = '👎 Report';
         const sig = (window.SIGNAL_CACHE[q.id]) || { up: 0, down: 0 };
-        const label = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? 's' : '') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? 's' : '') : ''}`;
+        const label = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? '' : 's') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? '' : 's') : ''}`;
         let sigEl = document.querySelector('#fb .cvsig');
         if (!sigEl && (sig.up || sig.down)) {
           sigEl = document.createElement('span'); sigEl.className = 'cvsig';
@@ -1382,7 +1382,7 @@
       (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = sig;
       const sigEl = document.querySelector('#fb .cvsig');
       if (!sigEl) return;
-      sigEl.textContent = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? 's' : '') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? 's' : '') : ''}`;
+      sigEl.textContent = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? '' : 's') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? '' : 's') : ''}`;
     }).catch(() => {});
     const nb = $('#nextbtn'), pc = $('#progcount');
     if (nb) nb.hidden = false;
@@ -1411,9 +1411,9 @@
     const votes = (window.SIGNAL_CACHE || {})[q.id] || { up: 0, down: 0 };
     const n = votes.up || 0, m = votes.down || 0;
     const signal = (n || m) ? ` · <span class="cvsig">${n ? `${n} endorse${n === 1 ? '' : 's'}` : ''}${n && m ? ' · ' : ''}${m ? `${m} report${m === 1 ? '' : 's'}` : ''}</span>` : '';
-    return `<button class="setbtn" id="votegood" title="Endorse this question">👍 Good</button>` +
+    return `<div class="votebar"><button class="setbtn" id="votegood" title="Endorse this question">👍 Good</button>` +
       `<button class="setbtn" id="votereport" title="Report this question as bad or wrong">👎 Report</button>${signal}` +
-      `<a class="setbtn flagq" id="flagq" title="Write a detailed report on GitHub" href="https://github.com/icyavocado/class7-practice/issues/new?template=question-report.yml&question-id=${encodeURIComponent(q.id)}&guide-section=${encodeURIComponent(q.source ? q.source.section : '')}" target="_blank">Details…</a>`;
+      `<a class="setbtn flagq" id="flagq" title="Write a detailed report on GitHub" href="https://github.com/icyavocado/class7-practice/issues/new?template=question-report.yml&question-id=${encodeURIComponent(q.id)}&guide-section=${encodeURIComponent(q.source ? q.source.section : '')}" target="_blank">Details…</a></div>`;
   }
 
   /* ------------------------------------------------ summaries */
