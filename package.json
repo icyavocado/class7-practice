@@ -24,5 +24,8 @@
   "homepage": "https://github.com/icyavocado/class7-practice#readme",
   "devDependencies": {
     "playwright": "^1.65.1"
+  },
+  "dependencies": {
+    "postgres": "^4.1.1"
   }
 }

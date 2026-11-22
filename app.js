@@ -30,8 +30,35 @@
   /* Modern Web Guidance: wrap DOM updates in document.startViewTransition.
      Falls back to direct rendering, and never animates under reduced motion. */
   const noMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  window.QUESTION_VOTES = window.QUESTION_VOTES || {};
-  fetch('./votes.json').then(r => r.ok ? r.json() : null).then(v => { if (v) window.QUESTION_VOTES = v; }).catch(() => {});
+  // community reports -> Supabase (project URL + public publishable key)
+  const REPORTS_URL = 'https://uvlhzgndmzjyqlzdmdgn.supabase.co';
+  const REPORTS_PUBLISHABLE = 'sb_publishable_fQOv1CCjBjcbg5sOxyVbLQ_tWlBO1Xs';
+
+  function deviceId() {
+    let d = localStorage.getItem('report-device');
+    if (!d) { d = 'dv-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('report-device', d); }
+    return d;
+  }
+  const reportSessionToken = () => 'st-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  async function sendReportVote(qid, vote) {
+    const r = await fetch(REPORTS_URL + '/functions/v1/report-vote', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
+      body: JSON.stringify({ bank_id: S.activeBank || 'default', qid, vote, device_id: deviceId(), session_token: reportSessionToken() }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+    return j; // { ok, up, down, recorded }
+  }
+  async function reportSignal(bankId, qid) {
+    const qs = 'bank_id=eq.' + encodeURIComponent(bankId) + '&qid=eq.' + encodeURIComponent(qid) + '&select=up,down';
+    const r = await fetch(REPORTS_URL + '/rest/v1/question_signal?' + qs, {
+      headers: { apikey: REPORTS_PUBLISHABLE, authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return (await r.json())[0] || { up: 0, down: 0 };
+  }
+  window.SIGNAL_CACHE = window.SIGNAL_CACHE || {};
   const withTransition = fn => {
     // Intra-run question swaps skip the view transition: rapid navigation keeps
     // superseding transitions, leaving stale frozen frames (e.g. an unchanging tally).
@@ -1318,7 +1345,34 @@
     renderTally();
 
     $('#fb').innerHTML = fb + flagHtml(q);
-    const fq = $('#flagq');
+    const vg = $('#votegood'), vr = $('#votereport');
+    const castVote = (vote) => {
+      vg.disabled = vr.disabled = true;
+      sendReportVote(q.id, vote).then(function (res) {
+        (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = { up: res.up, down: res.down };
+        document.getElementById('votegood').textContent = '👍 Good';
+        document.getElementById('votereport').textContent = '👎 Report';
+        const sig = (window.SIGNAL_CACHE[q.id]) || { up: 0, down: 0 };
+        const label = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? 's' : '') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? 's' : '') : ''}`;
+        let sigEl = document.querySelector('#fb .cvsig');
+        if (!sigEl && (sig.up || sig.down)) {
+          sigEl = document.createElement('span'); sigEl.className = 'cvsig';
+          const anchor = document.getElementById('flagq');
+          if (anchor) anchor.insertAdjacentElement('beforebegin', sigEl); else document.getElementById('fb').appendChild(sigEl);
+        }
+        if (sigEl) sigEl.textContent = label;
+      }).catch(function (e2) { vg.textContent = vr.textContent = 'offline'; }).finally(function () {
+        vg.disabled = vr.disabled = false;
+      });
+    };
+    if (vg) vg.onclick = () => castVote('up');
+    if (vr) vr.onclick = () => castVote('down');
+    reportSignal(S.activeBank || 'default', q.id).then(function (sig) {
+      (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = sig;
+      const sigEl = document.querySelector('#fb .cvsig');
+      if (!sigEl) return;
+      sigEl.textContent = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? 's' : '') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? 's' : '') : ''}`;
+    }).catch(() => {});
     if (fq) fq.onclick = () => open('https://github.com/icyavocado/class7-practice/issues/new'
       + '?template=question-report.yml&question-id=' + encodeURIComponent(q.id)
       + '&guide-section=' + encodeURIComponent(q.source ? q.source.section : ''), '_blank');
@@ -1346,10 +1400,12 @@
   }
   function chapterName(c) { const ch = S.chapters.find(x => x.id === c); return ch ? ch.name : ''; }
   function flagHtml(q) {
-    const votes = (window.QUESTION_VOTES[q.id]) || {};
+    const votes = (window.SIGNAL_CACHE || {})[q.id] || { up: 0, down: 0 };
     const n = votes.up || 0, m = votes.down || 0;
-    const signal = (n || m) ? ` · <span class="cvsig">${m} community report${m === 1 ? '' : 's'}${n ? `, ${n} endorse${n === 1 ? 's' : ''}` : ''}</span>` : '';
-    return `<button class="setbtn flagq" id="flagq" title="Open a GitHub issue to endorse or report this question">Report question</button>${signal}`;
+    const signal = (n || m) ? ` · <span class="cvsig">${n ? `${n} endorse${n === 1 ? '' : 's'}` : ''}${n && m ? ' · ' : ''}${m ? `${m} report${m === 1 ? '' : 's'}` : ''}</span>` : '';
+    return `<button class="setbtn" id="votegood" title="Endorse this question">👍 Good</button>` +
+      `<button class="setbtn" id="votereport" title="Report this question as bad or wrong">👎 Report</button>${signal}` +
+      `<a class="setbtn flagq" id="flagq" title="Write a detailed report on GitHub" href="https://github.com/icyavocado/class7-practice/issues/new?template=question-report.yml&question-id=${encodeURIComponent(q.id)}&guide-section=${encodeURIComponent(q.source ? q.source.section : '')}" target="_blank">Details…</a>`;
   }
 
   /* ------------------------------------------------ summaries */

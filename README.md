@@ -3,7 +3,6 @@
 [![Release](https://img.shields.io/github/v/release/icyavocado/class7-practice)](https://github.com/icyavocado/class7-practice/releases/latest)
 ![Tests fact-checked](https://img.shields.io/badge/questions-fact--checked%20505%2F505-3fb950)
 [![release](https://github.com/icyavocado/class7-practice/actions/workflows/release.yml/badge.svg)](https://github.com/icyavocado/class7-practice/actions/workflows/release.yml)
-[![votes](https://github.com/icyavocado/class7-practice/actions/workflows/votes.yml/badge.svg)](https://github.com/icyavocado/class7-practice/actions/workflows/votes.yml)
 [![License: MIT](https://img.shields.io/badge/code_license-MIT-yellow.svg)](LICENSE)
 
 Practice tests for the **Alberta Class 7 knowledge test** — 505 questions generated
@@ -35,9 +34,10 @@ in the guide. Runs entirely in your browser.
   questions.
 - **Named profiles** with separate progress, plus share links / backup files that
   hand your progress to another device.
-- **Community signals** — every answered question offers "Flag this question":
-  it opens a prefilled GitHub issue; a nightly action counts the 👍/👎 reactions
-  into `votes.json`, and answered questions show a small "n community reports" chip.
+- **Community signals** — every answered question carries 👍 Good / 👎 Report buttons;
+  votes are stored in a Supabase project you configure (schema in `supabase/`),
+  and answered questions show a small "endorsed · reported" chip with live counts.
+  "Write details…" opens the ready-made GitHub issue form for full reports.
 - **No dependencies** — five static files and two fonts; no build step, no framework.
 
 ## Your own practice tests (PDF → questions)
@@ -95,8 +95,8 @@ with a prefilled issue — that is on you, not automatic.
 | `store.js` | IndexedDB facade with in-memory fallback (`window.DB`) |
 | `drivers-guide-2026.md` | the guide text every question cites |
 | `tools/factcheck.mjs` | rerunnable fact-checker → `docs/fact-check.md` |
-| `tools/build-votes.mjs` | nightly issue-reaction aggregator → `votes.json` |
-| `.github/workflows/` | `release` (tag → offline bundle + Pages), `votes` (cron) |
+| `supabase/` | report schema + edge function (community votes) |
+| `.github/workflows/` | `release` (tag → offline bundle + Pages) |
 
 ## Contributing
 
