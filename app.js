@@ -32,7 +32,7 @@
   const noMotion = matchMedia('(prefers-reduced-motion: reduce)');
   // community reports -> Supabase (project URL + public publishable key)
   const REPORTS_URL = 'https://uvlhzgndmzjyqlzdmdgn.supabase.co';
-  const REPORTS_PUBLISHABLE = 'sb_publishable_fQOv1CCjBjcbg5sOxyVbLQ_tWlBO1Xs';
+  const REPORTS_PUBLISHABLE = 'sb_publishable_2XnLRar3qhhMVLckmcyhkQ_iquv0rqa';
 
   function deviceId() {
     let d = localStorage.getItem('report-device');
