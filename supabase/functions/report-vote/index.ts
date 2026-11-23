@@ -17,7 +17,7 @@ const SERVICE =
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
   '';
 const URL = Deno.env.get('SUPABASE_URL') ?? '';
-const SALT = Deno.env.get('REPORT_SALT') ?? '';
+const SALT = Deno.env.get('SALT_EVERY_AOW_29ff3fdjwq15w90f') ?? '';
 const admin = createClient(URL, SERVICE);
 
 // limits for votes ('up' / 'down')

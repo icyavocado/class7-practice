@@ -107,14 +107,17 @@ Deno.serve(async (req) => {
 
     // mint a 3-word code via SQL (retry on the rare collision)
     for (let attempt = 0; attempt < 5; attempt++) {
-      const { data: gen } = await admin.rpc('share_code');
+      const { data: gen, error: rpcErr } = await admin.rpc('share_code');
+      if (rpcErr) return json({ error: 'code gen: ' + String(rpcErr.message).slice(0, 160) }, 500);
       const code = String(gen ?? '').toLowerCase();
-      if (!CODE_RE.test(code)) return json({ error: 'code generation failed' }, 500);
+      if (!CODE_RE.test(code)) return json({ error: 'code gen returned: ' + String(gen).slice(0, 60) }, 500);
       const { error: insErr } = await admin.from('share_codes').insert({
         code, payload, size: payload.length, device_id: deviceId, ip_hash: ipHash,
       });
       if (!insErr) return json({ ok: true, code });
-      if (!String(insErr.message).includes('duplicate key')) return json({ error: 'insert failed' }, 500);
+      if (!String(insErr.message).includes('duplicate key')) {
+        return json({ error: 'insert failed: ' + String(insErr.message).slice(0, 160) }, 500);
+      }
     }
     return json({ error: 'could not mint a code' }, 500);
   } catch (err) {
