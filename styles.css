@@ -280,8 +280,8 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .scrubbubble.locked { color: var(--muted-fg); border-color: var(--border); }
 .votebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
 .votebar .setbtn.on { border-color: var(--amber, #b45309); color: var(--amber, #b45309); }
-#rpwrap { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(2px); }
-.rpanel { max-width: 420px; width: 100%; padding: 18px; display: grid; gap: 10px; }
+.ovl { position: fixed; inset: 0; z-index: 80; display: flex; padding: 16px; overflow-y: auto; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(2px); }
+.rpanel { max-width: 420px; width: 100%; max-height: calc(100dvh - 32px); margin: auto; padding: 18px; display: grid; gap: 10px; overflow-y: auto; }
 .rptitle { font-weight: 700; font-size: 15px; }
 .rpbanner { font-weight: 600; font-size: 12.5px; color: var(--muted-fg); }
 .rpq { font-size: 12.5px; color: var(--muted-fg); max-height: 4.5em; overflow: hidden; text-overflow: ellipsis; }

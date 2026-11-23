@@ -61,6 +61,27 @@ test.describe('issue reporter', () => {
     await ctx.close();
   });
 
+  test('panel fits small viewports: starts on screen and scrolls to Send', async () => {
+    const { page, ctx } = await newPage(browser);
+    await mockSend(page, []);
+    await page.setViewportSize({ width: 480, height: 600 });
+    await gotoHome(page);
+    await page.click('#issuebtn');
+    await page.waitForSelector('#ipwrap');
+    // never clipped upward (the old centered-flex cut the panel off both ends)
+    const card = await page.locator('.rpanel').boundingBox();
+    test.expect(card.y).toBeGreaterThanOrEqual(0);
+    // and the Send button is reachable by scrolling the wrapper
+    const ok = await page.evaluate(() => {
+      const w = document.getElementById('ipwrap');
+      w.scrollTop = w.scrollHeight;
+      const r = document.getElementById('ipcancel').getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight;
+    });
+    test.expect(ok).toBe(true);
+    await ctx.close();
+  });
+
   test('gear menu: report mid-practice captures question + breadcrumbs, cancel sends nothing', async () => {
     const { page, ctx } = await newPage(browser);
     const posts = [];

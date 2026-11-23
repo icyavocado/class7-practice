@@ -1511,6 +1511,7 @@
     closeReasonPanel();
     const wrap = document.createElement('div');
     wrap.id = 'rpwrap';
+    wrap.className = 'ovl';
     wrap.innerHTML = `<div class="card rpanel" role="dialog" aria-modal="true" aria-label="Why are you reporting this question?">
       <div class="rptitle">What's wrong with this question?</div>
       ${opts && opts.banner ? `<div class="rpbanner">${esc(opts.banner)}</div>` : ''}
@@ -1592,12 +1593,13 @@
     const diag = captureDiag();
     const wrap = document.createElement('div');
     wrap.id = 'ipwrap';
+    wrap.className = 'ovl';
     wrap.innerHTML = `<div class="card rpanel" role="dialog" aria-modal="true" aria-label="Report an issue">
       <div class="rptitle">Report an issue</div>
       <div class="rpchips">${ISSUE_KINDS.map((k, i) => `<button class="chip${i === 0 ? ' on' : ''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>
       <textarea class="rpnote" id="ipnote" maxlength="2000" placeholder="What happened? What did you expect? (max 2000 characters)\u2026"></textarea>
       <label class="ipstate"><input type="checkbox" id="ipstateck" checked> Include app state (page, steps, errors \u2014 no personal data)</label>
-      <details class="ipdiag" open><summary>What we'll attach</summary><pre id="ipdiagpre">${esc(JSON.stringify(diag, null, 1))}</pre></details>
+      <details class="ipdiag"><summary>What we'll attach (page, steps, errors)</summary><pre id="ipdiagpre">${esc(JSON.stringify(diag, null, 1))}</pre></details>
       <div class="rpmsg" id="ipmsg"></div>
       <div class="nextrow"><button class="btn ghost" id="ipcancel">Cancel</button><button class="btn" id="ipsend">Send report</button></div>
     </div>`;
