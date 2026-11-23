@@ -21,7 +21,7 @@ async function newPage(browser) {
   // cross-origin fetches reject without them (preflight gets no ACAO)
   const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS', 'access-control-allow-headers': 'authorization, content-type' };
   await ctx.route('**/functions/v1/report-vote**', route => route.fulfill({ status: 204, headers: CORS, body: '' }));
-  await ctx.route('**/functions/v1/site-report**', route => route.fulfill({ status: 204, headers: CORS, body: '' }));
+  await ctx.route('**/functions/v1/dynamic-api**', route => route.fulfill({ status: 204, headers: CORS, body: '' }));
   await ctx.route('**/functions/v1/share-progress**', route => route.fulfill({
     status: 404, headers: CORS, contentType: 'application/json', body: '{"error":"not deployed"}',
   }));

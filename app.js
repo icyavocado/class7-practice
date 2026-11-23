@@ -118,7 +118,7 @@
   }
   window.SIGNAL_CACHE = window.SIGNAL_CACHE || {};
   async function sendReportIssue(kind, message, diag) {
-    const r = await fetch(REPORTS_URL + '/functions/v1/site-report', {
+    const r = await fetch(REPORTS_URL + '/functions/v1/dynamic-api', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
       body: JSON.stringify(Object.assign(

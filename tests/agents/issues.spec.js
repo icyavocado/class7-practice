@@ -12,7 +12,7 @@ test.describe('issue reporter', () => {
   test.afterAll(async () => { await browser.close(); });
 
   async function mockSend(page, posts) {
-    await page.route('**/functions/v1/site-report**', route => {
+    await page.route('**/functions/v1/dynamic-api**', route => {
       posts.push(route.request().postDataJSON());
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) });
     });
