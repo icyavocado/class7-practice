@@ -171,7 +171,14 @@
     refreshProfRow();
     applyAppearance(S.settings.appearance || localStorage.getItem('appearance') || 'system');
     const hash = location.hash.slice(1);
-    const shareHash = isShareHash(hash);     // a share link beats a parked run
+    // pretty share paths: /s/apple-orange-grape (and /?s=… landing from the
+    // static host's 404 fallback) — both restore and normalize to the /s/ URL
+    const pathMatch = /\/s\/([a-z0-9-]+)/i.exec(location.pathname);
+    const queryMatch = /(?:^|[?&])s=([a-z0-9-]+)/.exec(location.search);
+    const sharePath = pathMatch ? pathMatch[1] : (queryMatch ? queryMatch[1] : null);
+    if (sharePath && !hash) capturePendingShare(sharePath);
+    if (queryMatch) history.replaceState(null, '', '/s/' + sharePath);
+    const shareHash = isShareHash(hash) || !!sharePath;   // a share link beats a parked run
    // custom banks + active bank
    S.banks = banksMeta || {};
    S.genconf = genconf || { provider: 'openai', key: '', base: '', model: '' };
@@ -588,7 +595,9 @@
     if (window.DB && DB.bulkPutState) DB.bulkPutState([...S.P.values()]);
   }
   function clearPendingShare() {
-    history.replaceState(null, '', location.pathname + location.search);
+    // a pretty /s/<code> path reverts to the root once the share is handled,
+    // so later lazy-loaded assets (e.g. the PDF generator's lib/) resolve
+    history.replaceState(null, '', location.pathname.replace(/\/s\/[a-z0-9-]+$/i, '/') + location.search);
     S.pendingShareData = null; S.pendingShareError = null;
   }
   window.__share = { buildShareLink: buildShareLink, decodeShareLink: decodeShareLink, packProgressBytes: packProgressBytes, deflateBytes: deflateBytes, inflateBytes: inflateBytes };

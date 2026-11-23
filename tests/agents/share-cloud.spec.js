@@ -91,6 +91,26 @@ test.describe('cloud share codes', () => {
     await ctx.close();
   });
 
+  test('the pretty /s/<code> path restores; the ?s= fallback normalizes to it', async () => {
+    const { page, ctx } = await newPage(browser);
+    const state = await mockEndpoints(page, {});
+    await gotoHome(page);
+    await progressN(page, 2);
+    await openShare(page);
+    // pretty path: restore directly from /s/apple-orange-grape
+    await page.goto('/s/apple-orange-grape');
+    await page.waitForSelector('.sharebanner', { timeout: 10000 });
+    test.expect(await page.textContent('.sharebanner')).toContain('2 seen');
+    await page.click('#impshare');
+    await page.waitForSelector('.idle');
+    // the ?s= query (Pages 404 fallback) normalizes to the pretty path
+    await page.goto('/?s=apple-orange-grape');
+    await page.waitForFunction(() => document.querySelector('.sharebanner'), undefined, { timeout: 10000 });
+    test.expect(new URL(page.url()).pathname).toBe('/s/apple-orange-grape');
+    await page.click('#ignshare');
+    await ctx.close();
+  });
+
   test('offline sharing falls back to the self-contained #p2 link', async () => {
     const { page, ctx } = await newPage(browser);
     await mockEndpoints(page, { cloudDown: true });

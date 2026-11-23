@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Opening your shared progress…</title>
+<script>
+  // GitHub Pages serves this file for any unknown path. A pretty share
+  // link (/s/apple-orange-grape) lands here on a direct visit; redirect to
+  // the app root with ?s= so assets resolve, and the app normalizes the
+  // address bar back to the pretty /s/ path after picking the code up.
+  var m = location.pathname.match(/\/s\/([a-z0-9-]+)/i);
+  location.replace('../?s=' + encodeURIComponent(m ? m[1].toLowerCase() : '')); 
+</script>
