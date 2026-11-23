@@ -138,7 +138,7 @@ create index if not exists site_reports_status_idx  on public.site_reports (stat
 --     codes for cloud share links (call via the share-progress function).
 create or replace function public.share_code() returns text
 language sql as $$
-  with w as (select ['apple','banana','cherry','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','maple','cedar','poppy','tulip','daisy','hazel','walnut','willow','aspen'] as list)
+  with w as (select ARRAY['apple','banana','cherry','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','maple','cedar','poppy','tulip','daisy','hazel','walnut','willow','aspen'] as list)
   select list[1 + floor(random() * 30)::int] || '-'
       || list[1 + floor(random() * 30)::int] || '-'
       || list[1 + floor(random() * 30)::int]

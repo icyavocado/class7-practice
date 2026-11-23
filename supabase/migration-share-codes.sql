@@ -23,9 +23,10 @@ revoke all on public.share_codes from anon, authenticated;
 
 -- 2. Three-word code generator ('apple-orange-grape'; 30 easy words ->
 --    27,000 combinations; the edge function retries on the rare collision).
+drop function if exists public.share_code();
 create or replace function public.share_code() returns text
 language sql as $$
-  with w as (select ['apple','banana','cherry','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','maple','cedar','poppy','tulip','daisy','hazel','walnut','willow','aspen'] as list)
+  with w as (select ARRAY['apple','banana','cherry','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','maple','cedar','poppy','tulip','daisy','hazel','walnut','willow','aspen'] as list)
   select list[1 + floor(random() * 30)::int] || '-'
       || list[1 + floor(random() * 30)::int] || '-'
       || list[1 + floor(random() * 30)::int]
