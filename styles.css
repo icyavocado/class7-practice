@@ -293,7 +293,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .ipstate { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink); cursor: pointer; }
 .ipstate input { accent-color: var(--ink); }
 .ipdiag summary { cursor: pointer; font-size: 12px; color: var(--muted-fg); }
-.ipdiag pre { font: 500 10.5px 'Geist Mono', ui-monospace, monospace; max-height: 220px; overflow: auto; margin: 8px 0 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted-fg); white-space: pre; }
+.ipdiag pre { font: 500 10.5px 'Geist Mono', ui-monospace, monospace; max-height: max(80px, min(220px, calc(100dvh - 350px))); overflow: auto; margin: 8px 0 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted-fg); white-space: pre; }
 .toast { position: fixed; left: 50%; bottom: 76px; transform: translate(-50%, 8px); z-index: 90; padding: 10px 16px; border-radius: 999px; background: var(--card); border: 1px solid var(--border); color: var(--ink); font: 600 13px inherit; opacity: 0; pointer-events: none; transition: opacity var(--speed, .18s), transform var(--speed, .18s); }
 .toast.on { opacity: 1; transform: translate(-50%, 0); }
 .footbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
