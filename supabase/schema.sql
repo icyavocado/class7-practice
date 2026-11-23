@@ -174,6 +174,7 @@ alter table public.site_reports     enable row level security;
 revoke all on public.site_reports     from anon, authenticated;
 alter table public.share_codes     enable row level security;
 revoke all on public.share_codes     from anon, authenticated;
+grant all on public.share_codes to service_role;
 grant select on public.question_signal to anon, authenticated;
 
 -- ============================================================================

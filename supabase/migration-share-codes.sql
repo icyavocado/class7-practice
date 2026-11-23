@@ -20,6 +20,7 @@ create index if not exists share_codes_ip_idx      on public.share_codes (ip_has
 
 alter table public.share_codes enable row level security;
 revoke all on public.share_codes from anon, authenticated;
+grant all on public.share_codes to service_role;
 
 -- 2. Three-word code generator ('apple-orange-grape'; 30 easy words ->
 --    27,000 combinations; the edge function retries on the rare collision).
