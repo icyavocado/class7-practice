@@ -200,7 +200,6 @@
       const v = S.stash; S.stash = null; S.view = v; saveCurrentProfile();
       const want = mRun ? parseInt(mRun[2], 10) - 1 : v.idx;
       S.view.idx = Math.max(0, Math.min(want, S.view.queue.length - 1));
-      if (S.view.mode === 'exam') startExamTimer();
       renderTop(); withTransition(renderQuestion);
     } else {
       if (mRun) navReplace('#home');   // stale run link — nothing to resume
@@ -333,7 +332,9 @@
     if (arc) arc.style.strokeDasharray = RING_C.toFixed(1);
   }
   function updateRing(activeRun) {
-    const seen = S.bank.filter(q => { const r = S.P.get(q.id); return r && r.status !== 'unseen'; }).length;
+    // the ring counts engagement: any mastery status, any attempt (exam or
+    // practice), or a flag — so exam work shows up while confidence stays pure
+    const seen = S.bank.filter(q => { const r = S.P.get(q.id); return r && (r.status !== 'unseen' || (r.attempts || 0) > 0 || r.flagged); }).length;
     const total = S.bank.length;
     const nEl = document.getElementById('ringn'), totEl = document.getElementById('ringtotal'), arc = document.getElementById('ringarc');
     const ring = document.getElementById('ring');
@@ -787,6 +788,7 @@
       r.flagged = !r.flagged; persist(q.id);
       const b = $('#flagbtn'); b.classList.toggle('on', r.flagged); b.innerHTML = '⚑ ' + (r.flagged ? 'Flagged' : 'Flag');
     };
+    if (isExam && !S.view.timer) startExamTimer();   // single timer owner: any exam render keeps the countdown alive
     const opts = $('#zone').querySelectorAll('.opt');
     const answered = !!(v.tally && (v.tally[v.idx] === true || v.tally[v.idx] === false));
     const rec0 = (v.answers || {})[q.id];
@@ -863,6 +865,7 @@
     withTransition(renderQuestion);
   }
   function startExamTimer() {
+    if (S.view.timer) clearInterval(S.view.timer);
     S.view.timer = setInterval(() => {
       S.view.left--;
       const el = $('#timer'); if (el) { el.textContent = mmss(S.view.left); el.classList.toggle('hot', S.view.left < 300); }
@@ -872,7 +875,7 @@
   function parkRun(outHash) {
     const v = S.view;
     if (!v || !v.mode || v.mode === 'idle') { navReplace('#home'); return; }
-    if (v.timer) clearInterval(v.timer);
+    if (v.timer) { clearInterval(v.timer); v.timer = null; }
     if (!v.done) {
       const { timer, ...rest } = v;
       S.stash = JSON.parse(JSON.stringify(rest));
@@ -886,13 +889,15 @@
   }
   window.addEventListener('pagehide', parkRun);
   window.addEventListener('beforeunload', parkRun);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') parkRun(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') parkRun();
+    else if (S.view && S.view.mode === 'exam' && !S.view.done && !S.view.timer && S.view.left > 0) startExamTimer();
+  });
   function resumeRun() {
     if (!S.stash) return;
     const v = S.stash; S.stash = null;
     S.view = v;
     saveCurrentProfile();
-    if (v.mode === 'exam') startExamTimer();
     navReplace(hashFor(v.mode, v.idx, v.done));
     renderTop();
     withTransition(renderQuestion);
@@ -1214,7 +1219,6 @@
     if (S.stash && S.stash.mode === mode) {
       const v = S.stash; S.stash = null; S.view = v; saveCurrentProfile();
       S.view.idx = Math.min(k, S.view.queue.length - 1);
-      if (S.view.mode === 'exam') startExamTimer();
       renderTop(); withTransition(renderQuestion); return;
     }
     gotoIdle();
@@ -1440,9 +1444,10 @@
     v.answers[q.id] = { picked: i, correct: correct };
     pingAnswered(q.id);
     if (v.mode === 'exam') {
-      if (correct) v.correct++;
+      r.attempts++; r.lastResult = correct;   // exam answers are engagement only — status/confidence stay untouched
+      if (correct) { v.correct++; persist(q.id); }
       else {
-        r.attempts++; r.lastResult = false; persist(q.id);   // exam never touches status/confidence
+        persist(q.id);
         if (r.status === 'unseen') { r.status = 'review'; persist(q.id); }
       }
     } else {
