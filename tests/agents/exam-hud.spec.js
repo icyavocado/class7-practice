@@ -14,6 +14,22 @@ async function startExam(page) {
   await page.waitForSelector('#timer', { timeout: 5000 });
 }
 
+test.describe('question figures', () => {
+  test('every question image path resolves (no ../ escapes)', async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto('http://127.0.0.1:8461/');
+    const imgs = await page.evaluate(() => (window.QUESTIONS || []).filter(q => q.image).map(q => q.image));
+    test.expect(imgs.length).toBeGreaterThanOrEqual(4);
+    for (const img of imgs) {
+      test.expect(img.startsWith('assets/')).toBe(true);      // no ../ escapes
+      const resp = await page.request.get('http://127.0.0.1:8461/' + img);
+      test.expect(resp.status()).toBe(200);
+    }
+    await ctx.close();
+  });
+});
+
 test.describe('exam timer + engagement ring', () => {
   let browser;
   test.beforeAll(async () => { browser = await launch(); });
