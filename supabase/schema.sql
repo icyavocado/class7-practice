@@ -134,6 +134,32 @@ create table if not exists public.site_reports (
 create index if not exists site_reports_created_idx on public.site_reports (created_at);
 create index if not exists site_reports_status_idx  on public.site_reports (status);
 
+-- 6c. Word code generator: 30 easy words -> 'apple-orange-grape' style
+--     codes for cloud share links (call via the share-progress function).
+create or replace function public.share_code() returns text
+language sql as $$
+  with w as (select ['apple','banana','cherry','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','maple','cedar','poppy','tulip','daisy','hazel','walnut','willow','aspen'] as list)
+  select list[1 + floor(random() * 30)::int] || '-'
+      || list[1 + floor(random() * 30)::int] || '-'
+      || list[1 + floor(random() * 30)::int]
+  from w;
+$$;
+
+-- 6b. Cloud share codes: progress payloads behind short #p3 word codes
+--     ('apple-orange-grape'). Written only by the share-progress edge
+--     function; carries tiers/flags/streaks (the same blob as the offline
+--     #p2 link, deflated).
+create table if not exists public.share_codes (
+  code       text primary key,
+  payload    text not null,
+  size       int  not null,
+  created_at timestamptz not null default now(),
+  device_id  text not null,
+  ip_hash    text not null
+);
+create index if not exists share_codes_created_idx on public.share_codes (created_at);
+create index if not exists share_codes_ip_idx      on public.share_codes (ip_hash);
+
 -- 7. Lock down: no direct anon access to any table. Reads via the view only,
 --    writes via the edge function's service-role key.
 alter table public.question_reports enable row level security;
@@ -146,6 +172,8 @@ revoke all on public.report_log       from anon, authenticated;
 revoke all on public.question_answers from anon, authenticated;
 alter table public.site_reports     enable row level security;
 revoke all on public.site_reports     from anon, authenticated;
+alter table public.share_codes     enable row level security;
+revoke all on public.share_codes     from anon, authenticated;
 grant select on public.question_signal to anon, authenticated;
 
 -- ============================================================================
@@ -171,6 +199,11 @@ grant select on public.question_signal to anon, authenticated;
 -- Remove all reports from a banned reporter:
 --   delete from public.question_reports
 --   where device_id = '<value>' or ip_hash = '<value>' or fingerprint = '<value>';
+
+-- Recent cloud share codes (purge old ones to keep the table tidy):
+--   select code, size, created_at, device_id from public.share_codes
+--   order by created_at desc limit 25;
+--   delete from public.share_codes where created_at < now() - interval '365 days';
 
 -- Recent site-issue reports, newest first:
 --   select created_at, status, kind, message, diag from public.site_reports

@@ -33,7 +33,10 @@ in the guide. Runs entirely in your browser.
   pass at 80%), Chapter test with instant feedback, and Review of missed/flagged
   questions.
 - **Named profiles** with separate progress, plus share links / backup files that
-  hand your progress to another device.
+  hand your progress to another device. Sharing uploads a short lived
+  three-word link (`…#p3apple-orange-grape`); pasting the link or just the
+  code restores on any device. Offline it falls back to the self-contained
+  `#p2` link.
 - **Community signals** — answering a question counts it, and the vote bar holds
   a single Report button; answers and reports are stored in a Supabase project
   you configure (schema in `supabase/`), with a small "answered · reports" chip
@@ -86,10 +89,12 @@ fact-check pipeline.
 ## Privacy
 
 Everything lives in your browser (IndexedDB). There is no server, no analytics,
-no tracking. Sharing progress encodes it in a URL — optionally shortened via
-is.gd (a third-party service, used only when you click "Shorten"). The one
-deliberate phone-home is the **Flag this question** button, which opens GitHub
-with a prefilled issue — that is on you, not automatic.
+no tracking. Sharing progress sends the same question-tier blob the offline
+link carries to **your own** configured Supabase project (only on your click,
+never automatically) and hands out a short word code; the offline `#p2` link
+is the fallback and stays fully self-contained. The one deliberate phone-home
+is the **Report** buttons, which store anonymous votes and reports in the same
+Supabase project.
 
 ## Project structure
 

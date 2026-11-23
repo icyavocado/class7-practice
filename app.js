@@ -171,6 +171,7 @@
     refreshProfRow();
     applyAppearance(S.settings.appearance || localStorage.getItem('appearance') || 'system');
     const hash = location.hash.slice(1);
+    const shareHash = /^p[13]/.test(hash);   // a share link beats a parked run
    // custom banks + active bank
    S.banks = banksMeta || {};
    S.genconf = genconf || { provider: 'openai', key: '', base: '', model: '' };
@@ -186,17 +187,9 @@
       if (retry && retry.queue && retry.queue.every && retry.queue.every(id => S.byId.has(id))) S.stash = retry;
       navReplace(hashFor(S.view && S.view.mode, S.view && S.view.idx, false));
     }
-    if (hash.indexOf('p1') === 0) {
-      decodeShareLink(hash).then(function(data) {
-        S.pendingShareData = data; S.pendingShareError = null;
-        if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
-      }).catch(function() {
-        S.pendingShareError = true; S.pendingShareData = null;
-        if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
-      });
-    }
+    if (/^p[13]/.test(hash)) capturePendingShare(hash);
     const mRun = hash.match(/^(exam|chapter|review)\/(\d+)$/);
-    if (S.stash && (!mRun || S.stash.mode === mRun[1])) {
+    if (S.stash && !shareHash && (!mRun || S.stash.mode === mRun[1])) {
       const v = S.stash; S.stash = null; S.view = v; saveCurrentProfile();
       const want = mRun ? parseInt(mRun[2], 10) - 1 : v.idx;
       S.view.idx = Math.max(0, Math.min(want, S.view.queue.length - 1));
@@ -471,19 +464,7 @@
   }
   function inflateBytes(bytes) {
     const ds = new DecompressionStream('deflate-raw');
-    const reader = ds.readable.getReader();
-    const writer = ds.writable.getWriter();
-    return (async function() {
-      await writer.write(bytes);
-      await writer.close();
-      const out = [];
-      for (;;) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        for (const b of chunk.value) out.push(b);
-      }
-      return new Uint8Array(out);
-    })();
+    return new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer().then(function(buf) { return new Uint8Array(buf); });
   }
   function deflateRaw(bytes, stream) {
     return new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer().then(function(buf) { return new Uint8Array(buf); });
@@ -503,15 +484,58 @@
     return new Uint8Array(bytes);
   }
   async function buildShareLink() {
-    return location.origin + location.pathname + '#p2' + b64urlEncode(packProgressBytes());
+    const bytes = packProgressBytes();
+    if (window.CompressionStream) {
+      try {
+        const r = await fetch(REPORTS_URL + '/functions/v1/share-progress', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
+          body: JSON.stringify({ payload: b64urlEncode(await deflateBytes(bytes)), device_id: deviceId() }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j.code) return location.origin + location.pathname + '#p3' + String(j.code);
+      } catch (e) {}   // offline or not deployed -> fall back below
+    }
+    return location.origin + location.pathname + '#p2' + b64urlEncode(bytes);
   }
+  // pending-share decode: used by first load and by a share link pasted into
+  // an OPEN session (same-document hash change -> popstate)
+  function capturePendingShare(hash) {
+    decodeShareLink(hash).then(function(data) {
+      S.pendingShareData = data; S.pendingShareError = null;
+      if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
+    }).catch(function(e) {
+      console.warn('share decode failed:', e && e.message);
+      S.pendingShareError = true; S.pendingShareData = null;
+      S.pendingShareError = true; S.pendingShareData = null;
+      if (S.view && S.view.mode === 'idle') withTransition(gotoIdle);
+    });
+  }
+
   async function decodeShareLink(input) {
-    const hash = input.replace(/^.*#/, '');
+    let hash = input.replace(/^.*#/, '');
+    // a bare cloud code ("apple-orange-grape") acts as a link too
+    if (/^[a-z]{3,8}(-[a-z]{3,8}){2}$/.test(hash)) hash = 'p3' + hash.toLowerCase();
     const wait = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
     let m = hash.match(/^p2([A-Za-z0-9_-]+)$/);
     let bytes;
     if (m) {
       bytes = rawDecodePad(m[1]);
+    } else if ((m = hash.match(/^p3((?:[a-z]{3,8}-){2}[a-z]{3,8})$/i))) {
+      const r = await fetch(REPORTS_URL + '/functions/v1/share-progress?code=' + encodeURIComponent(m[1].toLowerCase()), {
+        headers: { authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.payload) throw new Error(j.error || ('HTTP ' + r.status));
+      bytes = await Promise.race([
+        inflateBytes(rawDecodePad(j.payload)),
+        wait(1200).then(function(){ throw new Error('decompression unsupported'); }),
+      ]);
+      if (bytes.length < 2) throw new Error('empty');
+      const chk3 = bytes[bytes.length - 2] | (bytes[bytes.length - 1] << 8);
+      const body3 = bytes.slice(0, bytes.length - 2);
+      let sum3 = 0; body3.forEach(function(b){ sum3 += b; });
+      if ((sum3 & 255) !== (chk3 & 255) || (sum3 >> 8) !== (chk3 >> 8)) throw new Error('checksum');
     } else {
       m = hash.match(/^p1([zr])([A-Za-z0-9_-]+)$/);
       if (!m) throw new Error('not a share link');
@@ -1163,6 +1187,7 @@
     const h = location.hash.slice(1) || 'home';
     const m = h.match(/^(exam|chapter|review)\/(\d+)$/);
     if (!m) {
+      if (/^p(3([a-z]{3,8}-){2}[a-z]{3,8}|1[zr][A-Za-z0-9_-]+|2[A-Za-z0-9_-]+)/.test(h)) { capturePendingShare(h); return; }
       if (h === 'results' && S.view && S.view.done) { showResults(); return; }
       if (S.view && S.view.mode && S.view.mode !== 'idle' && !S.view.done) parkRun('#home');
       gotoIdle();
@@ -1194,11 +1219,12 @@
   }
   async function previewRestore(raw) {
     pendingRestore = null; restPrev.textContent = 'Reading…'; restImp.hidden = true; restIgn.hidden = false;
-    let info = null;
+    let info = null, lastErr = null;
     try { info = await decodeShareLink(raw); pendingRestore = { src: 'link', data: info }; }
     catch (err) {
+      lastErr = err;
       try { info = parseBackupText(raw); pendingRestore = { src: 'file', data: info }; }
-      catch (err2) { pendingRestore = null; }
+      catch (err2) { lastErr = err2; pendingRestore = null; }
     }
     if (pendingRestore) {
       const d = pendingRestore.data;
@@ -1207,7 +1233,7 @@
         : (d.file && d.file.profile ? d.file.profile + ': ' : '') + d.seen + ' records · ' + d.sessions + ' sessions — importing REPLACES this profile.';
       restImp.hidden = false;
     } else {
-      const msg = err && err.message ? String(err.message).slice(0, 60) : 'unknown error';
+      const msg = lastErr && lastErr.message ? String(lastErr.message).slice(0, 60) : 'unknown error';
       restPrev.textContent = "Couldn't read that — " + msg + '. Use a Share link or a Backup file.';
     }
   }
@@ -1229,25 +1255,7 @@
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, function() { inp.select(); try { document.execCommand('copy'); } catch (e) {} done(); });
     else { inp.focus(); inp.select(); try { document.execCommand('copy'); } catch (e) {} done(); }
   };
-  document.getElementById('shortshare').onclick = function() {
-    const inp = document.getElementById('sharelink');
-    const btn = document.getElementById('shortshare');
-    btn.disabled = true; btn.textContent = '…';
-    const cb = 'isgd' + Date.now().toString(36);
-    window[cb] = function(data) {
-      delete window[cb];
-      btn.disabled = false; btn.textContent = 'Shorten';
-      if (data && data.shorturl) inp.value = data.shorturl;
-      else btn.textContent = 'unavailable';
-      setTimeout(function(){ btn.textContent = 'Shorten'; }, 2000);
-    };
-    const s = document.createElement('script');
-    s.onload = function() {};
-    s.onerror = function() { delete window[cb]; btn.disabled = false; btn.textContent = 'offline'; setTimeout(function(){ btn.textContent = 'Shorten'; }, 2000); };
-    s.src = 'https://is.gd/create.php?format=json&callback=' + cb + '&url=' + encodeURIComponent(inp.value);
-    document.head.appendChild(s);
-  };
-  document.getElementById('dlbackup').onclick = function() {
+  /* the Shorten button lived here (is.gd); replaced by short #p3 cloud codes */  document.getElementById('dlbackup').onclick = function() {
     saveCurrentProfile();
     const name = currentProfile();
     const payload = { app: 'class7-practice', version: APP_VERSION, profile: name, created: new Date().toISOString(), progress: (profilesReg[name] && profilesReg[name].p) || [], sessions: S.sessions.slice(), stash: S.stash || null };
