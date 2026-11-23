@@ -39,7 +39,7 @@ in the guide. Runs entirely in your browser.
   `#p2` link.
 - **Community signals** — answering a question counts it, and the vote bar holds
   a single Report button; answers and reports are stored in a Supabase project
-  you configure (schema in `supabase/`), with a small "answered · reports" chip
+  you configure (schema in `supabase/`), with a small "answered · % right · reports" chip
   showing live counts on every question, and a reason popup for reports.
 - **Issue reports with a repro snapshot** — "Report an issue" (footer or gear
   menu) opens a quick form that captures the app state as the form opens: page
@@ -113,7 +113,7 @@ Supabase project.
 
 Found a question that clashes with the guide, or a typo in it? Press
 **Report**, on an answered question and tell us what's wrong — the report
-records your vote and asks for a reason (you can add detail, or skip). Code
+records your vote and asks for a reason (you can add detail, or skip). Per-question right/wrong and option-pick stats grow with every answer, so weak or mis-keyed questions surface in the moderation ranking. Code
 PRs welcome: keep it dependency-free and vanilla.
 
 ## License

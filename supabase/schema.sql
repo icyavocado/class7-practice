@@ -80,13 +80,24 @@ create view public.question_signal as
       where b.value in (x.device_id, x.ip_hash)
     )
     group by x.bank_id, x.qid
+  ),
+  base as (
+    select coalesce(v.bank_id, a.bank_id) as bank_id,
+           coalesce(v.qid, a.qid) as qid,
+           coalesce(v.up, 0) as up,
+           coalesce(v.down, 0) as down,
+           coalesce(a.answers, 0) as answers
+    from v full outer join a on a.bank_id = v.bank_id and a.qid = v.qid
   )
-  select coalesce(v.bank_id, a.bank_id) as bank_id,
-         coalesce(v.qid, a.qid) as qid,
-         coalesce(v.up, 0) as up,
-         coalesce(v.down, 0) as down,
-         coalesce(a.answers, 0) as answers
-  from v full outer join a on a.bank_id = v.bank_id and a.qid = v.qid;
+  select base.bank_id, base.qid, base.up, base.down, base.answers,
+         coalesce(s.correct, 0) as correct,
+         coalesce(s.wrong, 0) as wrong,
+         coalesce(s.picked0, 0) as picked0,
+         coalesce(s.picked1, 0) as picked1,
+         coalesce(s.picked2, 0) as picked2,
+         coalesce(s.picked3, 0) as picked3
+  from base
+  left join public.question_stats s on s.bank_id = base.bank_id and s.qid = base.qid;
 
 -- 5. Upserts used by the edge function (service role only; anon is not granted).
 --    reason may arrive with the vote or later (reason panel Send posts a
@@ -160,16 +171,61 @@ create table if not exists public.share_codes (
 create index if not exists share_codes_created_idx on public.share_codes (created_at);
 create index if not exists share_codes_ip_idx      on public.share_codes (ip_hash);
 
+-- 6c. Per-question outcome stats: aggregated right/wrong + option-pick
+--     counters (written by bump_question_stats; no per-user answer history).
+create table if not exists public.question_stats (
+  bank_id  text not null default 'default',
+  qid      text not null,
+  correct  bigint not null default 0,
+  wrong    bigint not null default 0,
+  picked0  bigint not null default 0,
+  picked1  bigint not null default 0,
+  picked2  bigint not null default 0,
+  picked3  bigint not null default 0,
+  unique (bank_id, qid)
+);
+create index if not exists question_stats_qid_idx     on public.question_stats (bank_id, qid);
+create index if not exists question_stats_wrong_idx   on public.question_stats (bank_id, wrong);
+
+create or replace function public.bump_question_stats(
+  p_bank text, p_qid text, p_correct boolean, p_picked smallint
+) returns void
+language plpgsql security definer set search_path = public as $$
+declare inc int := case when p_picked between 0 and 3 then 1 else 0 end;
+begin
+  insert into public.question_stats (bank_id, qid, correct, wrong, picked0, picked1, picked2, picked3)
+    values (
+      p_bank, p_qid,
+      case when p_correct then 1 else 0 end,
+      case when p_correct then 0 else 1 end,
+      case when p_picked = 0 then inc else 0 end,
+      case when p_picked = 1 then inc else 0 end,
+      case when p_picked = 2 then inc else 0 end,
+      case when p_picked = 3 then inc else 0 end
+    )
+    on conflict (bank_id, qid) do update set
+      correct = public.question_stats.correct + (case when p_correct then 1 else 0 end),
+      wrong   = public.question_stats.wrong   + (case when p_correct then 0 else 1 end),
+      picked0 = public.question_stats.picked0 + (case when p_picked = 0 then inc else 0 end),
+      picked1 = public.question_stats.picked1 + (case when p_picked = 1 then inc else 0 end),
+      picked2 = public.question_stats.picked2 + (case when p_picked = 2 then inc else 0 end),
+      picked3 = public.question_stats.picked3 + (case when p_picked = 3 then inc else 0 end);
+end $$;
+grant execute on function public.bump_question_stats(text, text, boolean, smallint) to service_role;
+
 -- 7. Lock down: no direct anon access to any table. Reads via the view only,
 --    writes via the edge function's service-role key.
 alter table public.question_reports enable row level security;
 alter table public.report_bans      enable row level security;
 alter table public.report_log       enable row level security;
+alter table public.question_stats    enable row level security;
 alter table public.question_answers enable row level security;
 revoke all on public.question_reports from anon, authenticated;
 revoke all on public.report_bans      from anon, authenticated;
 revoke all on public.report_log       from anon, authenticated;
 revoke all on public.question_answers from anon, authenticated;
+revoke all on public.question_stats    from anon, authenticated;
+grant all on public.question_stats    to service_role;
 alter table public.site_reports     enable row level security;
 revoke all on public.site_reports     from anon, authenticated;
 alter table public.share_codes     enable row level security;
@@ -200,6 +256,17 @@ grant select on public.question_signal to anon, authenticated;
 -- Remove all reports from a banned reporter:
 --   delete from public.question_reports
 --   where device_id = '<value>' or ip_hash = '<value>' or fingerprint = '<value>';
+
+-- Question needs-work ranking (high wrong-rate at >=10 samples):
+--   select qid, correct, wrong, round(100.0 * wrong / (correct + wrong)) as wrong_pct
+--   from public.question_stats
+--   where correct + wrong >= 10
+--   order by wrong_pct desc limit 25;
+-- One wrong option dominating (mis-keyed or confusing):
+--   select qid, wrong, greatest(picked0, picked1, picked2, picked3) as top_wrong
+--   from public.question_stats
+--   where wrong > 0 and greatest(picked0, picked1, picked2, picked3) > wrong / 2 + correct
+--   order by top_wrong desc limit 25;
 
 -- Recent cloud share codes (purge old ones to keep the table tidy):
 --   select code, size, created_at, device_id from public.share_codes

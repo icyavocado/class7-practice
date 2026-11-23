@@ -48,6 +48,8 @@ test.describe('community reports', () => {
     const qid = posts[0].qid;
     test.expect(posts[0].bank_id).toBe('default');
     test.expect(posts[0].device_id).toMatch(/^dv-/);
+    test.expect(Number.isInteger(posts[0].picked)).toBe(true);        // outcome: option index
+    test.expect(typeof posts[0].correct).toBe('boolean');
     await test.expect(page.locator('#fb .cvsig')).toContainText('42 answered', { timeout: 5000 });
     // no upvote box, no GitHub details link — one downvote button + chip
     await test.expect(page.locator('#votegood')).toHaveCount(0);

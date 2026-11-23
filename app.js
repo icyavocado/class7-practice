@@ -48,30 +48,38 @@
     return d;
   }
   const reportSessionToken = () => 'st-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  async function sendReportVote(qid, vote, reason) {
+  async function sendReportVote(qid, vote, reason, outcome) {
     const r = await fetch(REPORTS_URL + '/functions/v1/report-vote', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
       body: JSON.stringify(Object.assign(
         { bank_id: S.activeBank || 'default', qid, vote, device_id: deviceId(), session_token: reportSessionToken() },
-        reason ? { reason: String(reason).slice(0, 500) } : {})),
+        reason ? { reason: String(reason).slice(0, 500) } : {},
+        vote === 'answered' && outcome ? { picked: outcome.picked, correct: outcome.correct } : {})),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
     return j; // { ok, up, down, recorded }
   }
   async function reportSignal(bankId, qid) {
-    const qs = 'bank_id=eq.' + encodeURIComponent(bankId) + '&qid=eq.' + encodeURIComponent(qid) + '&select=up,down,answers';
+    const qs = 'bank_id=eq.' + encodeURIComponent(bankId) + '&qid=eq.' + encodeURIComponent(qid) + '&select=up,down,answers,correct,wrong';
     const r = await fetch(REPORTS_URL + '/rest/v1/question_signal?' + qs, {
       headers: { apikey: REPORTS_PUBLISHABLE, authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    return (await r.json())[0] || { up: 0, down: 0, answers: 0 };
+    return (await r.json())[0] || { up: 0, down: 0, answers: 0, correct: 0, wrong: 0 };
   }
-  // chip label: answered count + report count, non-zero parts only
+  // community visibility gate: the chip shows only while practicing — an
+  // exam run carries no community difficulty hints while it's running
+  const statsVisible = () => S.view.mode !== 'exam';
+  // chip label: answered count + accuracy + reports, non-zero parts only
   function sigLabel(sig) {
     const bits = [];
     if (sig && sig.answers) bits.push(sig.answers + ' answered');
+    if (sig && sig.correct != null) {
+      const samples = (sig.correct || 0) + (sig.wrong || 0);
+      if (samples >= 5) bits.push(Math.round(100 * (sig.correct || 0) / samples) + '% right');
+    }
     if (sig && sig.down) bits.push(sig.down + ' report' + (sig.down === 1 ? '' : 's'));
     return bits.join(' \u00b7 ');
   }
@@ -80,13 +88,17 @@
   function mergeSignal(qid, fresh) {
     const cache = (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {});
     const cur = cache[qid] || {};
-    const merged = { up: fresh.up || 0, down: fresh.down || 0, answers: Math.max(fresh.answers || 0, cur.answers || 0) };
+    const merged = {
+      up: fresh.up || 0, down: fresh.down || 0,
+      answers: Math.max(fresh.answers || 0, cur.answers || 0),
+      correct: fresh.correct || 0, wrong: fresh.wrong || 0,
+    };
     cache[qid] = merged;
     return merged;
   }
   // pushes a fresh signal into every rendered chip (feedback bar + runtop)
   function refreshSignalChips(qid, sig) {
-    const label = sigLabel(sig);
+    const label = statsVisible() ? sigLabel(sig) : '';
     const bar = document.querySelector('#fb .votebar');
     let chip = document.querySelector('#fb .cvsig');
     if (label && bar && !chip) {
@@ -97,22 +109,11 @@
     const top = document.querySelector('.runtopsig');
     if (top) { top.textContent = label; top.style.display = label ? '' : 'none'; }
   }
-  // the first answer of a question on this device pings the server once, so
-  // the community answered-count grows across users; repeats stay local
-  function answeredSet() {
-    const k = 'answer-pinged-' + (S.activeBank || 'default');
-    let seen;
-    try { seen = new Set(JSON.parse(localStorage.getItem(k) || '[]')); } catch (e) { seen = new Set(); }
-    return {
-      has: q => seen.has(q),
-      add: q => { seen.add(q); try { localStorage.setItem(k, JSON.stringify([...seen].slice(-2000))); } catch (e) {} },
-    };
-  }
-  function pingAnswered(qid) {
-    const seen = answeredSet();
-    if (seen.has(qid)) return;
-    sendReportVote(qid, 'answered').then(function (res) {
-      seen.add(qid);
+  // every answer reports its outcome (right/wrong + which option was picked)
+  // so the per-question stats grow with all attempts; the server-side
+  // answered upsert stays idempotent per device + question
+  function bumpOutcome(qid, picked, correct) {
+    sendReportVote(qid, 'answered', undefined, { picked: picked, correct: correct }).then(function (res) {
       if (res && typeof res.answers === 'number') refreshSignalChips(qid, mergeSignal(qid, res));
     }).catch(function () {});
   }
@@ -287,7 +288,7 @@
   }
 
   /* ------------------------------------------------ appearance */
-  const APP_VERSION = 'v1.3.1';
+  const APP_VERSION = 'v1.4';
   const RING_C = 2 * Math.PI * 19;
   function ringInit() {
     const arc = document.getElementById('ringarc');
@@ -844,7 +845,7 @@
         chip = document.createElement('span'); chip.className = 'cvsig runtopsig';
         tally.insertAdjacentElement('afterend', chip);
       }
-      const label = sigLabel(sig);
+      const label = statsVisible() ? sigLabel(sig) : '';
       if (label) { chip.textContent = label; chip.style.display = ''; }
       else chip.style.display = 'none';
     }).catch(function () { window.__sigPending = null; });
@@ -1442,7 +1443,7 @@
     let fb = '';
     v.answers = v.answers || {};
     v.answers[q.id] = { picked: i, correct: correct };
-    pingAnswered(q.id);
+    bumpOutcome(q.id, i, correct);
     if (v.mode === 'exam') {
       r.attempts++; r.lastResult = correct;   // exam answers are engagement only — status/confidence stay untouched
       if (correct) { v.correct++; persist(q.id); }
@@ -1525,7 +1526,7 @@
   }
   function chapterName(c) { const ch = S.chapters.find(x => x.id === c); return ch ? ch.name : ''; }
   function flagHtml(q) {
-    const label = sigLabel((window.SIGNAL_CACHE || {})[q.id] || {});
+    const label = statsVisible() ? sigLabel((window.SIGNAL_CACHE || {})[q.id] || {}) : '';
     const signal = label ? ` · <span class="cvsig">${esc(label)}</span>` : '';
     return `<div class="votebar"><button class="setbtn" id="votereport" title="Report this question as bad or wrong">Report</button>${signal}</div>`;
   }

@@ -56,6 +56,9 @@ Deno.serve(async (req) => {
     const vote = String(body.vote ?? '').toLowerCase().slice(0, 10);
     const deviceId = String(body.device_id ?? '').slice(0, 64);
     const isAnswerPing = vote === 'answered';
+    // outcome of this attempt (answered pings only): option index + right/wrong
+    const correct = body.correct === true;
+    const pickedRaw = Number(body.picked);
     // optional reason attaches to the downvote (same or later POST); the
     // coalesce in the SQL means a reason-only POST never erases an earlier one
     const reason = body.reason === undefined || body.reason === null
@@ -67,6 +70,12 @@ Deno.serve(async (req) => {
     if (!qid || !/^[a-z0-9-]{2,40}$/.test(qid)) return json({ error: 'invalid qid' }, 400);
     if (vote !== 'up' && vote !== 'down' && !isAnswerPing) return json({ error: 'invalid vote' }, 400);
     if (vote === 'up' && reason) return json({ error: 'reason only applies to downvotes' }, 400);
+    if (isAnswerPing && (!Number.isInteger(pickedRaw) || pickedRaw < 0 || pickedRaw > 6)) {
+      return json({ error: 'invalid picked' }, 400);
+    }
+    if (isAnswerPing && body.correct !== true && body.correct !== false) {
+      return json({ error: 'invalid correct' }, 400);
+    }
     if (!deviceId || deviceId.length < 8) return json({ error: 'invalid device' }, 400);
     if (bankId !== 'default' && !/^b[a-z0-9]{8,16}$/.test(bankId)) return json({ error: 'invalid bank' }, 400);
 
@@ -122,10 +131,13 @@ Deno.serve(async (req) => {
     await admin.from('report_log').insert({ ip_hash: ipHash });
     await admin.from('report_log').delete().lt('created_at', new Date(Date.now() - 172_800_000).toISOString());
 
-    // persist the event (upsert per device+question)
+    // persist the event (answered pings also increment the outcome stats)
     if (isAnswerPing) {
       await admin.rpc('apply_report_ping', {
         p_bank: bankId, p_qid: qid, p_device: deviceId, p_ip_hash: ipHash,
+      });
+      await admin.rpc('bump_question_stats', {
+        p_bank: bankId, p_qid: qid, p_correct: correct, p_picked: pickedRaw,
       });
     } else {
       await admin.rpc('apply_report_vote', {
@@ -137,7 +149,7 @@ Deno.serve(async (req) => {
     // fresh aggregate for this question
     const { data: signal } = await admin
       .from('question_signal')
-      .select('up, down, answers')
+      .select('up, down, answers, correct, wrong')
       .eq('bank_id', bankId)
       .eq('qid', qid)
       .maybeSingle();
@@ -147,6 +159,8 @@ Deno.serve(async (req) => {
       up: signal?.up ?? 0,
       down: signal?.down ?? 0,
       answers: signal?.answers ?? 0,
+      correct: signal?.correct ?? 0,
+      wrong: signal?.wrong ?? 0,
       recorded: vote,
     });
   } catch (err) {
