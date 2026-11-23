@@ -16,9 +16,9 @@ const SERVICE =
   Deno.env.get('SUPABASE_SECRET_KEY') ??
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ??
   '';
-const URL = Deno.env.get('SUPABASE_URL') ?? '';
+const PROJECT_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SALT = Deno.env.get('REPORT_SALT') ?? '';
-const admin = createClient(URL, SERVICE);
+const admin = createClient(PROJECT_URL, SERVICE);
 
 // sharing is deliberate and rare
 const WRITE_HOURLY_LIMIT = 10;
