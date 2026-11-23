@@ -22,15 +22,15 @@ alter table public.share_codes enable row level security;
 revoke all on public.share_codes from anon, authenticated;
 grant all on public.share_codes to service_role;
 
--- 2. Three-word code generator ('apple-orange-grape'; 30 easy words ->
+-- 2. Three-word code generator ('apple-orange-grape'; 200 easy words ->
 --    27,000 combinations; the edge function retries on the rare collision).
 drop function if exists public.share_code();
 create or replace function public.share_code() returns text
 language sql as $$
-  with w as (select ARRAY['apple','banana','cherry','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','maple','cedar','poppy','tulip','daisy','hazel','walnut','willow','aspen'] as list)
-  select list[1 + floor(random() * 30)::int] || '-'
-      || list[1 + floor(random() * 30)::int] || '-'
-      || list[1 + floor(random() * 30)::int]
+  with w as (select ARRAY['cat','dog','fox','owl','bear','deer','wolf','hare','lion','tiger','mouse','horse','sheep','goat','duck','dove','crow','swan','eagle','falcon','puppy','kitten','panda','koala','zebra','camel','otter','mole','toad','frog','crab','fish','shark','whale','snail','rabbit','spider','turtle','pigeon','hamster','donkey','seal','bee','ant','bat','sun','moon','star','cloud','rain','snow','wind','storm','river','ocean','lake','hill','leaf','tree','flower','grass','stone','sand','sea','sky','forest','meadow','island','beach','tide','frost','ice','fire','smoke','mist','breeze','thunder','sunset','rainbow','dawn','dusk','trail','cave','spring','rock','creek','fern','moss','pine','oak','elm','maple','cedar','willow','aspen','poppy','tulip','daisy','hazel','walnut','lily','rose','ivy','reed','palm','birch','apple','banana','grape','lemon','mango','melon','orange','peach','pear','plum','berry','olive','tomato','carrot','potato','onion','garlic','pepper','pumpkin','cucumber','cherry','kiwi','lime','fig','date','honey','bread','butter','cheese','toast','soup','pasta','rice','oats','bean','tea','coffee','cocoa','sugar','mint','basil','ginger','clove','bed','lamp','chair','table','clock','key','bell','book','cup','bowl','spoon','fork','plate','mug','pot','pan','jar','box','bag','ship','train','boat','kite','drum','harp','flute','pencil','eraser','ruler','stamp','coin','token','globe','magnet','red','blue','green','amber','azure','coral','gold','silver','violet','indigo','scarlet','crimson','white','black','brown','gray','pink'] as list)
+  select list[1 + floor(random() * 200)::int] || '-'
+      || list[1 + floor(random() * 200)::int] || '-'
+      || list[1 + floor(random() * 200)::int]
   from w;
 $$;
 
