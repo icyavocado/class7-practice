@@ -171,7 +171,7 @@
     refreshProfRow();
     applyAppearance(S.settings.appearance || localStorage.getItem('appearance') || 'system');
     const hash = location.hash.slice(1);
-    const shareHash = /^p[13]/.test(hash);   // a share link beats a parked run
+    const shareHash = isShareHash(hash);     // a share link beats a parked run
    // custom banks + active bank
    S.banks = banksMeta || {};
    S.genconf = genconf || { provider: 'openai', key: '', base: '', model: '' };
@@ -187,7 +187,7 @@
       if (retry && retry.queue && retry.queue.every && retry.queue.every(id => S.byId.has(id))) S.stash = retry;
       navReplace(hashFor(S.view && S.view.mode, S.view && S.view.idx, false));
     }
-    if (/^p[13]/.test(hash)) capturePendingShare(hash);
+    if (isShareHash(hash)) capturePendingShare(hash);
     const mRun = hash.match(/^(exam|chapter|review)\/(\d+)$/);
     if (S.stash && !shareHash && (!mRun || S.stash.mode === mRun[1])) {
       const v = S.stash; S.stash = null; S.view = v; saveCurrentProfile();
@@ -493,10 +493,15 @@
           body: JSON.stringify({ payload: b64urlEncode(await deflateBytes(bytes)), device_id: deviceId() }),
         });
         const j = await r.json().catch(() => ({}));
-        if (r.ok && j.code) return location.origin + location.pathname + '#p3' + String(j.code);
+        if (r.ok && j.code) return location.origin + location.pathname + '#' + String(j.code);
       } catch (e) {}   // offline or not deployed -> fall back below
     }
     return location.origin + location.pathname + '#p2' + b64urlEncode(bytes);
+  }
+  // any hash that carries share payload: legacy p1/p2/p3 links + the new
+  // bare word code links ("#apple-orange-grape")
+  function isShareHash(h) {
+    return /^p[123][a-z0-9_-]*$/i.test(h) || /^[a-z]{3,8}(-[a-z]{3,8}){2}$/i.test(h);
   }
   // pending-share decode: used by first load and by a share link pasted into
   // an OPEN session (same-document hash change -> popstate)
@@ -1187,7 +1192,7 @@
     const h = location.hash.slice(1) || 'home';
     const m = h.match(/^(exam|chapter|review)\/(\d+)$/);
     if (!m) {
-      if (/^p(3([a-z]{3,8}-){2}[a-z]{3,8}|1[zr][A-Za-z0-9_-]+|2[A-Za-z0-9_-]+)/.test(h)) { capturePendingShare(h); return; }
+      if (isShareHash(h)) { capturePendingShare(h); return; }
       if (h === 'results' && S.view && S.view.done) { showResults(); return; }
       if (S.view && S.view.mode && S.view.mode !== 'idle' && !S.view.done) parkRun('#home');
       gotoIdle();

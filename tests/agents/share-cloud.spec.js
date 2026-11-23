@@ -1,6 +1,6 @@
 // e2e — cloud share codes. Sharing uploads the progress payload to the
 // share-progress edge function and hands out a short three-word code link
-// (#p3apple-orange-grape); opening or pasting the code restores via a GET. Offline (or not-yet-deployed)
+// (#apple-orange-grape); opening or pasting the code restores via a GET. Offline (or not-yet-deployed)
 // sharing falls back to the self-contained #p2 link, which stay decodable.
 const test = require('playwright/test');
 const { launch, newPage, gotoHome } = require('../helpers');
@@ -47,19 +47,19 @@ test.describe('cloud share codes', () => {
     return page.inputValue('#sharelink');
   }
 
-  test('share uploads and hands out a short #p3 code link; opening it restores', async () => {
+  test('share uploads and hands out a bare word-code link; opening it restores', async () => {
     const { page, ctx } = await newPage(browser);
     const state = await mockEndpoints(page, {});
     await gotoHome(page);
     await progressN(page, 2);
 
     const link = await openShare(page);
-    test.expect(link).toMatch(/#p3apple-orange-grape$/);   // a word-code link, not a blob
+    test.expect(link).toMatch(/#apple-orange-grape$/);     // a bare word-code link, not a blob
     test.expect(state.uploaded.payload).toMatch(/^[A-Za-z0-9_-]+$/);
     test.expect(state.uploaded.device_id).toMatch(/^dv-/);
 
     // opening the shared link (simulates the receiver): full load, banner shows
-    await page.goto('/#p3' + state.code);
+    await page.goto('/#' + state.code);
     await page.reload();
     await page.waitForTimeout(1500);
     console.log('DBG', JSON.stringify(await page.evaluate(async () => {
@@ -74,7 +74,7 @@ test.describe('cloud share codes', () => {
     await ctx.close();
   });
 
-  test('pasting a bare code restores through the same GET', async () => {
+  test('pasting just the code restores through the same GET', async () => {
     const { page, ctx } = await newPage(browser);
     const state = await mockEndpoints(page, {});
     await gotoHome(page);

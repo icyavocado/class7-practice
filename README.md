@@ -34,7 +34,7 @@ in the guide. Runs entirely in your browser.
   questions.
 - **Named profiles** with separate progress, plus share links / backup files that
   hand your progress to another device. Sharing uploads a short lived
-  three-word link (`…#p3apple-orange-grape`); pasting the link or just the
+  three-word link (`…#apple-orange-grape`); pasting the link or just the
   code restores on any device. Offline it falls back to the self-contained
   `#p2` link.
 - **Community signals** — answering a question counts it, and the vote bar holds
