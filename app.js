@@ -27,6 +27,14 @@
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const mmss = s => { s = Math.max(0, s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
+  /* issue-reporter groundwork: navigation breadcrumbs + a recent-error ring,
+     kept in memory only and attached when the user reports an issue */
+  const CRUMBS = [], ERRLOG = [];
+  const pushCrumb = text => { CRUMBS.push(Date.now().toString(36) + ' ' + text); if (CRUMBS.length > 12) CRUMBS.shift(); };
+  const logAppErr = msg => { ERRLOG.push(String(msg).slice(0, 200)); if (ERRLOG.length > 8) ERRLOG.shift(); };
+  window.addEventListener('error', e => { if (e.message) logAppErr((e.message) + (e.filename ? ' ' + e.filename.split('/').pop() + ':' + e.lineno : '')); });
+  window.addEventListener('unhandledrejection', e => logAppErr('promise: ' + ((e.reason && (e.reason.message || e.reason)) || 'unknown')));
+
   /* Modern Web Guidance: wrap DOM updates in document.startViewTransition.
      Falls back to direct rendering, and never animates under reduced motion. */
   const noMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -109,6 +117,18 @@
     }).catch(function () {});
   }
   window.SIGNAL_CACHE = window.SIGNAL_CACHE || {};
+  async function sendReportIssue(kind, message, diag) {
+    const r = await fetch(REPORTS_URL + '/functions/v1/site-report', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
+      body: JSON.stringify(Object.assign(
+        { kind: String(kind).toLowerCase(), message: String(message).slice(0, 2000), device_id: deviceId() },
+        diag ? { diag: diag } : {})),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  }
   const withTransition = fn => {
     // Intra-run question swaps skip the view transition: rapid navigation keeps
     // superseding transitions, leaving stale frozen frames (e.g. an unchanging tally).
@@ -268,7 +288,7 @@
   }
 
   /* ------------------------------------------------ appearance */
-  const APP_VERSION = 'v1.2';
+  const APP_VERSION = 'v1.3';
   const RING_C = 2 * Math.PI * 19;
   function ringInit() {
     const arc = document.getElementById('ringarc');
@@ -363,9 +383,12 @@
       document.getElementById('gearbtn').setAttribute('aria-expanded', 'false');
     }
     if (e.target.closest('#resetbtn')) { handleReset(); return; }
+    if (e.target.closest('#issuereportbtn')) { openIssuePanel(); document.getElementById('settings').hidden = true; return; }
     if (e.target.closest('[data-act="skip"]')) { stashRun(); return; }
     if (e.target.closest('[data-act="resume"]')) { resumeRun(); return; }
   });
+  const issueFoot = document.getElementById('issuebtn');
+  if (issueFoot) issueFoot.onclick = openIssuePanel;
 
   /* ------------------------------------------------ view rendering */
   /* reset: destructive — first click arms (4s), second confirms the wipe */
@@ -1134,8 +1157,8 @@
     if (!mode || mode === 'idle') return '#home';
     return done ? '#results' : '#' + mode + '/' + (idx + 1);
   }
-  function navReplace(hash) { if ((location.hash.slice(1) || 'home') !== hash.slice(1)) history.replaceState(null, '', hash); }
-  function navPush(hash) { if ((location.hash.slice(1) || 'home') !== hash.slice(1)) history.pushState(null, '', hash); }
+  function navReplace(hash) { if ((location.hash.slice(1) || 'home') !== hash.slice(1)) { pushCrumb('at ' + hash.slice(1)); history.replaceState(null, '', hash); } }
+  function navPush(hash) { if ((location.hash.slice(1) || 'home') !== hash.slice(1)) { pushCrumb('go ' + hash.slice(1)); history.pushState(null, '', hash); } }
   window.addEventListener('popstate', () => {
     const h = location.hash.slice(1) || 'home';
     const m = h.match(/^(exam|chapter|review)\/(\d+)$/);
@@ -1380,6 +1403,7 @@
     const r = rec(q.id);
     const correct = i === q.answer;
     v.answered++;
+    pushCrumb('answer ' + q.id + (correct ? ' right' : ' wrong'));
     (v.tally = v.tally || [])[v.idx] = correct;
 
     opts.forEach(o => {
@@ -1531,6 +1555,88 @@
       banner: 'You reported ' + v.examReports.length + ' question' + (v.examReports.length === 1 ? '' : 's') + ' during this exam',
       onDone: function () { sent[next] = true; setTimeout(promptExamReports, 400); },
     });
+  }
+
+  /* site-issue reporter: one panel, opened from the footer or the gear menu.
+     The app-state snapshot is captured the MOMENT the form opens so it always
+     matches the state the user saw; no personal data is included. -------- */
+  const ISSUE_KINDS = ['Bug', 'Wrong content', 'Suggestion', 'Other'];
+  function captureDiag() {
+    const v = S.view || {};
+    const counts = { unseen: 0, known: 0, review: 0 };
+    if (S.P) S.P.forEach(r => { if (r && counts[r.status] !== undefined) counts[r.status]++; });
+    const q = v.queue && S.byId ? S.byId.get(v.queue[v.idx]) : null;
+    const bankMeta = S.banks && S.banks[S.activeBank];
+    return {
+      version: APP_VERSION,
+      route: location.hash.slice(1) || 'home',
+      mode: v.mode || 'idle',
+      question: q ? q.id : null,
+      examTimer: v.mode === 'exam' && v.left != null ? Math.round(v.left) : null,
+      bank: { id: S.activeBank || 'default', size: (S.bank || []).length, name: S.activeBank === 'default' ? 'Built-in 2026' : ((bankMeta && bankMeta.name) || S.activeBank) },
+      settings: { passMark: S.settings.passMark, examLen: S.settings.examLen, examMinutes: S.settings.examMinutes },
+      profiles: Object.keys(profilesReg || {}).length,
+      progress: counts,
+      storage: window.DB && DB.storageMode ? DB.storageMode() : 'unknown',
+      viewport: { w: window.innerWidth, h: window.innerHeight },
+      reducedMotion: noMotion.matches,
+      lang: navigator.language,
+      ua: navigator.userAgent,
+      steps: CRUMBS.slice(),
+      errors: ERRLOG.slice(),
+      time: Date.now(),
+    };
+  }
+  function openIssuePanel() {
+    closeIssuePanel();
+    const diag = captureDiag();
+    const wrap = document.createElement('div');
+    wrap.id = 'ipwrap';
+    wrap.innerHTML = `<div class="card rpanel" role="dialog" aria-modal="true" aria-label="Report an issue">
+      <div class="rptitle">Report an issue</div>
+      <div class="rpchips">${ISSUE_KINDS.map((k, i) => `<button class="chip${i === 0 ? ' on' : ''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+      <textarea class="rpnote" id="ipnote" maxlength="2000" placeholder="What happened? What did you expect? (max 2000 characters)\u2026"></textarea>
+      <label class="ipstate"><input type="checkbox" id="ipstateck" checked> Include app state (page, steps, errors \u2014 no personal data)</label>
+      <details class="ipdiag" open><summary>What we'll attach</summary><pre id="ipdiagpre">${esc(JSON.stringify(diag, null, 1))}</pre></details>
+      <div class="rpmsg" id="ipmsg"></div>
+      <div class="nextrow"><button class="btn ghost" id="ipcancel">Cancel</button><button class="btn" id="ipsend">Send report</button></div>
+    </div>`;
+    document.body.appendChild(wrap);
+    let kind = ISSUE_KINDS[0];
+    const chips = wrap.querySelectorAll('.rpchips .chip');
+    chips.forEach(c => c.onclick = () => {
+      kind = c.dataset.k;
+      chips.forEach(o => o.classList.toggle('on', o === c));
+    });
+    wrap.querySelector('#ipstateck').onchange = e => {
+      wrap.querySelector('#ipdiagpre').style.display = e.target.checked ? '' : 'none';
+    };
+    wrap.querySelector('#ipcancel').onclick = closeIssuePanel;
+    wrap.querySelector('#ipsend').onclick = () => {
+      const note = wrap.querySelector('#ipnote').value.trim();
+      const msg = wrap.querySelector('#ipmsg');
+      if (note.length < 4) { msg.textContent = 'Add a few words describing the issue'; return; }
+      const send = wrap.querySelector('#ipsend');
+      send.disabled = true;
+      sendReportIssue(kind, note, wrap.querySelector('#ipstateck').checked ? diag : null).then(function () {
+        closeIssuePanel();
+        showToast('Thanks \u2014 the issue is recorded.');
+      }).catch(function () {
+        send.disabled = false;
+        msg.textContent = 'Could not send \u2014 try again';
+      });
+    };
+    wrap.querySelector('#ipnote').focus();
+  }
+  function closeIssuePanel() { const w = document.getElementById('ipwrap'); if (w) w.remove(); }
+  let toastTimer = null;
+  function showToast(text) {
+    let t = document.getElementById('toast');
+    if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; document.body.appendChild(t); }
+    t.textContent = text;
+    t.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('on'), 2600);
   }
 
   /* ------------------------------------------------ summaries */

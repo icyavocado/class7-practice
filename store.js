@@ -50,6 +50,7 @@
   }
 
   window.DB = {
+    storageMode: function () { return fallback ? 'memory' : 'indexeddb'; },
     ready: function () { return openDB().then(d => (fallback ? null : d)); },
     isFallback: () => fallback,
 

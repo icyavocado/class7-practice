@@ -18,6 +18,7 @@ async function newPage(browser) {
   // reports.spec registers its own page-level routes, which take precedence
   // over these context-level ones. The 204 keeps answered-pings silent.
   await ctx.route('**/functions/v1/report-vote**', route => route.fulfill({ status: 204, body: '' }));
+  await ctx.route('**/functions/v1/site-report**', route => route.fulfill({ status: 204, body: '' }));
   await ctx.route('**/rest/v1/question_signal**', route => route.fulfill({
     status: 200, contentType: 'application/json', body: '[]',
   }));

@@ -38,6 +38,10 @@ in the guide. Runs entirely in your browser.
   a single Report button; answers and reports are stored in a Supabase project
   you configure (schema in `supabase/`), with a small "answered · reports" chip
   showing live counts on every question, and a reason popup for reports.
+- **Issue reports with a repro snapshot** — "Report an issue" (footer or gear
+  menu) opens a quick form that captures the app state as the form opens: page
+  and question, last steps, caught errors, environment. Shown in a collapsible
+  preview, one click to exclude; stored privately in `site_reports`.
   "Write details…" opens the ready-made GitHub issue form for full reports.
 - **No dependencies** — five static files and two fonts; no build step, no framework.
 
@@ -97,7 +101,7 @@ with a prefilled issue — that is on you, not automatic.
 | `store.js` | IndexedDB facade with in-memory fallback (`window.DB`) |
 | `drivers-guide-2026.md` | the guide text every question cites |
 | `tools/factcheck.mjs` | rerunnable fact-checker → `docs/fact-check.md` |
-| `supabase/` | report schema + edge function (answered counts, community votes) |
+| `supabase/` | report schema + edge functions (answered counts, question votes, issue reports) |
 | `.github/workflows/` | `release` (tag → offline bundle + Pages) |
 
 ## Contributing

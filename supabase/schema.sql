@@ -116,6 +116,24 @@ begin
     on conflict (bank_id, qid, device_id) do update set updated_at = now();
 end $$;
 
+-- 6. App-level issue reports ("Report an issue" button). Private: written
+--    only by the site-report edge function, read in the dashboard. The diag
+--    jsonb carries the optional app-state snapshot (route, steps, errors).
+create table if not exists public.site_reports (
+  id          uuid primary key default gen_random_uuid(),
+  created_at  timestamptz not null default now(),
+  status      text not null default 'new',
+  kind        text not null check (kind in ('bug','content','suggestion','other')),
+  message     text not null,
+  diag        jsonb,
+  device_id   text not null,
+  ip_hash     text not null,
+  fingerprint text not null default '',
+  user_agent  text
+);
+create index if not exists site_reports_created_idx on public.site_reports (created_at);
+create index if not exists site_reports_status_idx  on public.site_reports (status);
+
 -- 7. Lock down: no direct anon access to any table. Reads via the view only,
 --    writes via the edge function's service-role key.
 alter table public.question_reports enable row level security;
@@ -126,6 +144,8 @@ revoke all on public.question_reports from anon, authenticated;
 revoke all on public.report_bans      from anon, authenticated;
 revoke all on public.report_log       from anon, authenticated;
 revoke all on public.question_answers from anon, authenticated;
+alter table public.site_reports     enable row level security;
+revoke all on public.site_reports     from anon, authenticated;
 grant select on public.question_signal to anon, authenticated;
 
 -- ============================================================================
@@ -151,6 +171,13 @@ grant select on public.question_signal to anon, authenticated;
 -- Remove all reports from a banned reporter:
 --   delete from public.question_reports
 --   where device_id = '<value>' or ip_hash = '<value>' or fingerprint = '<value>';
+
+-- Recent site-issue reports, newest first:
+--   select created_at, status, kind, message, diag from public.site_reports
+--   order by created_at desc limit 25;
+
+-- Mark a site report handled:
+--   update public.site_reports set status = 'done' where id = '<uuid>';
 
 -- Purge by question id + time window:
 --   delete from public.question_reports
