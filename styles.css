@@ -281,7 +281,7 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 .votebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
 .votebar .setbtn.on { border-color: var(--warn); color: var(--warn); }
 .ovl { position: fixed; inset: 0; z-index: 80; display: flex; padding: 16px; overflow-y: auto; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(2px); }
-.rpanel { max-width: 420px; width: 100%; max-height: calc(100dvh - 32px); margin: auto; padding: 18px; display: grid; gap: 10px; overflow-y: auto; }
+.rpanel { max-width: 420px; width: 100%; max-height: calc(100dvh - 32px); margin: auto; padding: 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; overflow: hidden auto; }
 .rptitle { font-weight: 700; font-size: 15px; }
 .rpbanner { font-weight: 600; font-size: 12.5px; color: var(--muted-fg); }
 .rpq { font-size: 12.5px; color: var(--muted-fg); max-height: 4.5em; overflow: hidden; text-overflow: ellipsis; }
