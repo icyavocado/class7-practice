@@ -14,6 +14,13 @@ async function newPage(browser) {
       indexedDB.deleteDatabase('class7-practice');
     } catch (e) {}
   });
+  // community-report endpoints answered locally by default (no network):
+  // reports.spec registers its own page-level routes, which take precedence
+  // over these context-level ones. The 204 keeps answered-pings silent.
+  await ctx.route('**/functions/v1/report-vote**', route => route.fulfill({ status: 204, body: '' }));
+  await ctx.route('**/rest/v1/question_signal**', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: '[]',
+  }));
   const page = await ctx.newPage();
   page.on('pageerror', () => {});
   return { page, ctx };

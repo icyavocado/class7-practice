@@ -279,6 +279,18 @@ html { scrollbar-color: color-mix(in oklab, var(--muted-fg) 45%, transparent) tr
 }
 .scrubbubble.locked { color: var(--muted-fg); border-color: var(--border); }
 .votebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.votebar .setbtn.on { border-color: var(--amber, #b45309); color: var(--amber, #b45309); }
+#rpwrap { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 16px; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(2px); }
+.rpanel { max-width: 420px; width: 100%; padding: 18px; display: grid; gap: 10px; }
+.rptitle { font-weight: 700; font-size: 15px; }
+.rpbanner { font-weight: 600; font-size: 12.5px; color: var(--muted-fg); }
+.rpq { font-size: 12.5px; color: var(--muted-fg); max-height: 4.5em; overflow: hidden; text-overflow: ellipsis; }
+.rpchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rpchips .chip { font: 600 12px inherit; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); cursor: pointer; }
+.rpchips .chip.on { border-color: var(--line-strong, #b45309); background: var(--fg); color: var(--bg); }
+.rpnote { min-height: 64px; resize: vertical; font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--fg); }
+.rpmsg { font-size: 12px; color: var(--no-c, #b42318); min-height: 0; }
+.votebar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
 .runtopsig { font: 600 10.5px 'Geist Mono', ui-monospace, monospace; padding: 3px 8px; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); color: var(--muted-fg); }
 .tally i.ok:hover, .tally i.no:hover { filter: brightness(1.25); }
 .tally i.ok:last-child, .tally i.no:last-child { animation: tally-pop .25s ease-out 1; }

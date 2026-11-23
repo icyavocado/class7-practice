@@ -16,8 +16,10 @@ create table if not exists public.question_reports (
   ip_hash     text not null,
   fingerprint text not null default '',
   user_agent  text,
+  reason      text,
   unique (bank_id, qid, device_id)
 );
+alter table public.question_reports add column if not exists reason text;
 create index if not exists question_reports_qid_idx     on public.question_reports (bank_id, qid);
 create index if not exists question_reports_device_idx  on public.question_reports (device_id);
 create index if not exists question_reports_ip_idx      on public.question_reports (ip_hash);
@@ -41,28 +43,77 @@ create table if not exists public.report_log (
 );
 create index if not exists report_log_ip_idx on public.report_log (ip_hash, created_at);
 
--- 4. Public read: aggregate counts only; banned reporters don't count.
-create or replace view public.question_signal as
-  select r.bank_id, r.qid,
-         count(*) filter (where r.vote = 'up')   as up,
-         count(*) filter (where r.vote = 'down') as down
-  from public.question_reports r
-  where not exists (
-    select 1 from public.report_bans b
-    where b.value in (r.device_id, r.ip_hash, r.fingerprint)
-  )
-  group by r.bank_id, r.qid;
+-- 4. First-time answer counts: one row per device per question; the signal
+--    view counts distinct devices. The app pings this once per answer only.
+create table if not exists public.question_answers (
+  bank_id    text not null default 'default',
+  qid        text not null,
+  device_id  text not null,
+  ip_hash    text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (bank_id, qid, device_id)
+);
+create index if not exists question_answers_qid_idx on public.question_answers (bank_id, qid);
+create index if not exists question_answers_ip_idx  on public.question_answers (ip_hash);
 
--- 5. Upsert used by the edge function (service role only; anon is not granted).
+-- 4b. Public read: aggregate counts only; banned reporters don't count.
+--     answers = distinct devices that answered, reports excluded from the count.
+drop view if exists public.question_signal;
+create view public.question_signal as
+  with v as (
+    select r.bank_id, r.qid,
+           count(*) filter (where r.vote = 'up')   as up,
+           count(*) filter (where r.vote = 'down') as down
+    from public.question_reports r
+    where not exists (
+      select 1 from public.report_bans b
+      where b.value in (r.device_id, r.ip_hash, r.fingerprint)
+    )
+    group by r.bank_id, r.qid
+  ),
+  a as (
+    select x.bank_id, x.qid, count(distinct x.device_id) as answers
+    from public.question_answers x
+    where not exists (
+      select 1 from public.report_bans b
+      where b.value in (x.device_id, x.ip_hash)
+    )
+    group by x.bank_id, x.qid
+  )
+  select coalesce(v.bank_id, a.bank_id) as bank_id,
+         coalesce(v.qid, a.qid) as qid,
+         coalesce(v.up, 0) as up,
+         coalesce(v.down, 0) as down,
+         coalesce(a.answers, 0) as answers
+  from v full outer join a on a.bank_id = v.bank_id and a.qid = v.qid;
+
+-- 5. Upserts used by the edge function (service role only; anon is not granted).
+--    reason may arrive with the vote or later (reason panel Send posts a
+--    second 'down' that only attaches the text).
+drop function if exists public.apply_report_vote(text, text, text, text, text, text, text);
 create or replace function public.apply_report_vote(
-  p_bank text, p_qid text, p_vote text, p_device text, p_ip_hash text, p_fp text, p_ua text
+  p_bank text, p_qid text, p_vote text, p_device text, p_ip_hash text, p_fp text, p_ua text, p_reason text default null
 ) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.question_reports (bank_id, qid, vote, device_id, ip_hash, user_agent, fingerprint)
-    values (p_bank, p_qid, p_vote, p_device, p_ip_hash, p_ua, p_fp)
+  insert into public.question_reports (bank_id, qid, vote, device_id, ip_hash, user_agent, fingerprint, reason)
+    values (p_bank, p_qid, p_vote, p_device, p_ip_hash, p_ua, p_fp, p_reason)
     on conflict (bank_id, qid, device_id)
-    do update set vote = excluded.vote, created_at = now(), user_agent = excluded.user_agent;
+    do update set vote = excluded.vote, created_at = now(), user_agent = excluded.user_agent,
+                  reason = coalesce(excluded.reason, public.question_reports.reason);
+end $$;
+
+-- 5b. Answer-count ping upsert (idempotent; one row per device + question).
+drop function if exists public.apply_report_ping(text, text, text, text);
+create or replace function public.apply_report_ping(
+  p_bank text, p_qid text, p_device text, p_ip_hash text
+) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.question_answers (bank_id, qid, device_id, ip_hash)
+    values (p_bank, p_qid, p_device, p_ip_hash)
+    on conflict (bank_id, qid, device_id) do update set updated_at = now();
 end $$;
 
 -- 7. Lock down: no direct anon access to any table. Reads via the view only,
@@ -70,9 +121,11 @@ end $$;
 alter table public.question_reports enable row level security;
 alter table public.report_bans      enable row level security;
 alter table public.report_log       enable row level security;
+alter table public.question_answers enable row level security;
 revoke all on public.question_reports from anon, authenticated;
 revoke all on public.report_bans      from anon, authenticated;
 revoke all on public.report_log       from anon, authenticated;
+revoke all on public.question_answers from anon, authenticated;
 grant select on public.question_signal to anon, authenticated;
 
 -- ============================================================================

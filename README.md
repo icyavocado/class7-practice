@@ -71,8 +71,9 @@ the whole bank against the guide text:
 
 **[Full report →](docs/fact-check.md)** — 8 questions were corrected or replaced
 during the first pass, 3 citation anchors repaired, 494 verified unchanged.
-A "Flag this question" button lets readers keep this honest; report anything
-suspicious and it lands in the fact-check pipeline.
+A "Report this question" button (after answering) lets readers keep this
+honest; the community answered-count and downvote reports land in the
+fact-check pipeline.
 
 > ⚠️ This is a study aid, **not** the official test and not legal advice. Rules
 > change — always read the current official guide.
@@ -95,15 +96,14 @@ with a prefilled issue — that is on you, not automatic.
 | `store.js` | IndexedDB facade with in-memory fallback (`window.DB`) |
 | `drivers-guide-2026.md` | the guide text every question cites |
 | `tools/factcheck.mjs` | rerunnable fact-checker → `docs/fact-check.md` |
-| `supabase/` | report schema + edge function (community votes) |
+| `supabase/` | report schema + edge function (answered counts, community votes) |
 | `.github/workflows/` | `release` (tag → offline bundle + Pages) |
 
 ## Contributing
 
-Found a question that clashes with the guide, or a typo in it? Use
-**"Flag this question"** in the app, or
-[open a question report](https://github.com/icyavocado/class7-practice/issues/new?template=question-report.yml)
-directly — include the question id and, if you can, the guide section. Code
+Found a question that clashes with the guide, or a typo in it? Press
+**👎 Report** on an answered question and tell us what's wrong — the report
+records your vote and asks for a reason (you can add detail, or skip). Code
 PRs welcome: keep it dependency-free and vanilla.
 
 ## License

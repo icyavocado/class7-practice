@@ -285,25 +285,36 @@ test.describe('persistence: progress, profiles, banks, share', () => {
     test.expect(await page.textContent('#ringn')).toBe('1');   // one seen record, untouched
   });
 
-  test('report question opens the GitHub issue template in a popup', async () => {
+  test('report question asks why in a reason panel (skip keeps the vote)', async () => {
     const { page, ctx } = await newPage(browser);
-    // block the real network; an empty HTML 200 (a top-level 204 makes Chromium
-    // cancel the navigation and close the popup)
-    await ctx.route('https://github.com/**', route => route.fulfill({ status: 200, contentType: 'text/html', body: '' }));
+    const posts = [];
+    await page.route('**/rest/v1/question_signal**', route => route.fulfill({
+      status: 200, contentType: 'application/json',
+      body: JSON.stringify([{ up: 0, down: 0, answers: 0 }]),
+    }));
+    await page.route('**/functions/v1/report-vote**', route => {
+      posts.push(route.request().postDataJSON());
+      const vote = posts[posts.length - 1].vote;
+      route.fulfill({
+        status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ok: true, up: 0, down: vote === 'down' ? 3 : 0, answers: 1, recorded: vote }),
+      });
+    });
     await gotoHome(page);
     await page.click('#chapters button[data-chapter="1"]');
     await page.waitForSelector('.run');
     await pick(page, 0);
-    await page.waitForSelector('#flagq');
 
-    const popupPromise = page.waitForEvent('popup');
-    await page.click('#flagq');
-    const popup = await popupPromise;
-    await popup.waitForURL(/github\.com/, { timeout: 10000 });
-    const url = popup.url();
-    test.expect(url).toContain('github.com/icyavocado/class7-practice/issues/new');
-    test.expect(url).toContain('template=question-report.yml');
-    test.expect(url).toContain('question-id=ch1-');
-    await popup.close();
+    await page.click('#votereport');
+    await page.waitForSelector('#rpwrap');                       // the panel shows
+    const chips = await page.$$eval('.rpchips .chip', els => els.map(e => e.textContent));
+    test.expect(chips).toContain('Wrong answer');
+    await page.click('#rpskip');                                 // skip keeps the vote
+    await test.expect(page.locator('#rpwrap')).toHaveCount(0);
+    test.expect(posts).toHaveLength(2);
+    test.expect(posts[1].vote).toBe('down');
+    test.expect(posts[1].reason).toBeUndefined();
+    await test.expect(page.locator('#votereport')).toBeDisabled();
+    await test.expect(page.locator('#votereport')).toContainText('Reported');
   });
 });

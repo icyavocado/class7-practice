@@ -40,23 +40,73 @@
     return d;
   }
   const reportSessionToken = () => 'st-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  async function sendReportVote(qid, vote) {
+  async function sendReportVote(qid, vote, reason) {
     const r = await fetch(REPORTS_URL + '/functions/v1/report-vote', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
-      body: JSON.stringify({ bank_id: S.activeBank || 'default', qid, vote, device_id: deviceId(), session_token: reportSessionToken() }),
+      body: JSON.stringify(Object.assign(
+        { bank_id: S.activeBank || 'default', qid, vote, device_id: deviceId(), session_token: reportSessionToken() },
+        reason ? { reason: String(reason).slice(0, 500) } : {})),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
     return j; // { ok, up, down, recorded }
   }
   async function reportSignal(bankId, qid) {
-    const qs = 'bank_id=eq.' + encodeURIComponent(bankId) + '&qid=eq.' + encodeURIComponent(qid) + '&select=up,down';
+    const qs = 'bank_id=eq.' + encodeURIComponent(bankId) + '&qid=eq.' + encodeURIComponent(qid) + '&select=up,down,answers';
     const r = await fetch(REPORTS_URL + '/rest/v1/question_signal?' + qs, {
       headers: { apikey: REPORTS_PUBLISHABLE, authorization: 'Bearer ' + REPORTS_PUBLISHABLE },
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    return (await r.json())[0] || { up: 0, down: 0 };
+    return (await r.json())[0] || { up: 0, down: 0, answers: 0 };
+  }
+  // chip label: answered count + report count, non-zero parts only
+  function sigLabel(sig) {
+    const bits = [];
+    if (sig && sig.answers) bits.push(sig.answers + ' answered');
+    if (sig && sig.down) bits.push(sig.down + ' report' + (sig.down === 1 ? '' : 's'));
+    return bits.join(' \u00b7 ');
+  }
+  // merges a fresh server signal into the cache; the answered count only
+  // grows per question, so a max() defends against GET/POST races
+  function mergeSignal(qid, fresh) {
+    const cache = (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {});
+    const cur = cache[qid] || {};
+    const merged = { up: fresh.up || 0, down: fresh.down || 0, answers: Math.max(fresh.answers || 0, cur.answers || 0) };
+    cache[qid] = merged;
+    return merged;
+  }
+  // pushes a fresh signal into every rendered chip (feedback bar + runtop)
+  function refreshSignalChips(qid, sig) {
+    const label = sigLabel(sig);
+    const bar = document.querySelector('#fb .votebar');
+    let chip = document.querySelector('#fb .cvsig');
+    if (label && bar && !chip) {
+      chip = document.createElement('span'); chip.className = 'cvsig';
+      bar.appendChild(chip);
+    }
+    if (chip) { chip.textContent = label; chip.style.display = label ? '' : 'none'; }
+    const top = document.querySelector('.runtopsig');
+    if (top) { top.textContent = label; top.style.display = label ? '' : 'none'; }
+  }
+  // the first answer of a question on this device pings the server once, so
+  // the community answered-count grows across users; repeats stay local
+  function answeredSet() {
+    const k = 'answer-pinged-' + (S.activeBank || 'default');
+    let seen;
+    try { seen = new Set(JSON.parse(localStorage.getItem(k) || '[]')); } catch (e) { seen = new Set(); }
+    return {
+      has: q => seen.has(q),
+      add: q => { seen.add(q); try { localStorage.setItem(k, JSON.stringify([...seen].slice(-2000))); } catch (e) {} },
+    };
+  }
+  function pingAnswered(qid) {
+    const seen = answeredSet();
+    if (seen.has(qid)) return;
+    sendReportVote(qid, 'answered').then(function (res) {
+      seen.add(qid);
+      if (res && typeof res.answers === 'number') refreshSignalChips(qid, mergeSignal(qid, res));
+    }).catch(function () {});
   }
   window.SIGNAL_CACHE = window.SIGNAL_CACHE || {};
   const withTransition = fn => {
@@ -723,7 +773,7 @@
     window.__sigPending = q.id;
     reportSignal(S.activeBank || 'default', q.id).then(function (sig) {
       window.__sigPending = q.id === window.__sigPending ? null : window.__sigPending;
-      (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = sig;
+      sig = mergeSignal(q.id, sig);
       const tally = document.getElementById('tally');
       if (!tally || !tally.parentElement) return;
       let chip = tally.parentElement.querySelector('.runtopsig');
@@ -731,11 +781,8 @@
         chip = document.createElement('span'); chip.className = 'cvsig runtopsig';
         tally.insertAdjacentElement('afterend', chip);
       }
-      const up = sig.up || 0, down = sig.down || 0;
-      const bits = [];
-      if (up) bits.push(up + ' endorse' + (up === 1 ? '' : 's'));
-      if (down) bits.push(down + ' report' + (down === 1 ? '' : 's'));
-      if (bits.length) { chip.textContent = bits.join(' \u00b7 '); chip.style.display = ''; }
+      const label = sigLabel(sig);
+      if (label) { chip.textContent = label; chip.style.display = ''; }
       else chip.style.display = 'none';
     }).catch(function () { window.__sigPending = null; });
   }
@@ -1345,6 +1392,7 @@
     let fb = '';
     v.answers = v.answers || {};
     v.answers[q.id] = { picked: i, correct: correct };
+    pingAnswered(q.id);
     if (v.mode === 'exam') {
       if (correct) v.correct++;
       else {
@@ -1381,36 +1429,26 @@
     renderTally();
 
     $('#fb').innerHTML = fb + flagHtml(q);
-    const vg = $('#votegood'), vr = $('#votereport');
-    const castVote = (vote) => {
-      vg.disabled = vr.disabled = true;
-      sendReportVote(q.id, vote).then(function (res) {
-        (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = { up: res.up, down: res.down };
-        document.getElementById('votegood').textContent = '👍 Good';
-        document.getElementById('votereport').textContent = '👎 Report';
-        const sig = (window.SIGNAL_CACHE[q.id]) || { up: 0, down: 0 };
-        const bits = [];
-        if (sig.up) bits.push(sig.up + ' endorse' + (sig.up === 1 ? '' : 's'));
-        if (sig.down) bits.push(sig.down + ' report' + (sig.down === 1 ? '' : 's'));
-        const label = bits.join(' · ');
-        let sigEl = document.querySelector('#fb .cvsig');
-        if (!sigEl && (sig.up || sig.down)) {
-          sigEl = document.createElement('span'); sigEl.className = 'cvsig';
-          const anchor = document.getElementById('flagq');
-          if (anchor) anchor.insertAdjacentElement('beforebegin', sigEl); else document.getElementById('fb').appendChild(sigEl);
-        }
-        if (sigEl) sigEl.textContent = label;
-      }).catch(function (e2) { vg.textContent = vr.textContent = 'offline'; }).finally(function () {
-        vg.disabled = vr.disabled = false;
-      });
-    };
-    if (vg) vg.onclick = () => castVote('up');
-    if (vr) vr.onclick = () => castVote('down');
+    const vr = document.getElementById('votereport');
+    if (vr) {
+      vr.onclick = () => {
+        vr.disabled = true;
+        sendReportVote(q.id, 'down').then(function (res) {
+          const sig = mergeSignal(q.id, res || {});
+          vr.textContent = '👎 Reported';
+          vr.classList.add('on');
+          refreshSignalChips(q.id, sig);
+          // practice/review: ask why right away; exam defers it to the results
+          if (S.view.mode === 'exam') {
+            S.view.examReports = S.view.examReports || [];
+            if (!S.view.examReports.includes(q.id)) S.view.examReports.push(q.id);
+            syncStash();
+          } else openReasonPanel(q);
+        }).catch(function () { vr.disabled = false; vr.textContent = 'offline'; });
+      };
+    }
     reportSignal(S.activeBank || 'default', q.id).then(function (sig) {
-      (window.SIGNAL_CACHE = window.SIGNAL_CACHE || {})[q.id] = sig;
-      const sigEl = document.querySelector('#fb .cvsig');
-      if (!sigEl) return;
-      sigEl.textContent = `${sig.up ? sig.up + ' endorse' + (sig.up === 1 ? '' : 's') : ''}${sig.up && sig.down ? ' · ' : ''}${sig.down ? sig.down + ' report' + (sig.down === 1 ? '' : 's') : ''}`;
+      refreshSignalChips(q.id, mergeSignal(q.id, sig));
     }).catch(() => {});
     const nb = $('#nextbtn'), pc = $('#progcount');
     if (nb) nb.hidden = false;
@@ -1436,12 +1474,63 @@
   }
   function chapterName(c) { const ch = S.chapters.find(x => x.id === c); return ch ? ch.name : ''; }
   function flagHtml(q) {
-    const votes = (window.SIGNAL_CACHE || {})[q.id] || { up: 0, down: 0 };
-    const n = votes.up || 0, m = votes.down || 0;
-    const signal = (n || m) ? ` · <span class="cvsig">${n ? `${n} endorse${n === 1 ? '' : 's'}` : ''}${n && m ? ' · ' : ''}${m ? `${m} report${m === 1 ? '' : 's'}` : ''}</span>` : '';
-    return `<div class="votebar"><button class="setbtn" id="votegood" title="Endorse this question">👍 Good</button>` +
-      `<button class="setbtn" id="votereport" title="Report this question as bad or wrong">👎 Report</button>${signal}` +
-      `<a class="setbtn flagq" id="flagq" title="Write a detailed report on GitHub" href="https://github.com/icyavocado/class7-practice/issues/new?template=question-report.yml&question-id=${encodeURIComponent(q.id)}&guide-section=${encodeURIComponent(q.source ? q.source.section : '')}" target="_blank">Details…</a></div>`;
+    const label = sigLabel((window.SIGNAL_CACHE || {})[q.id] || {});
+    const signal = label ? ` · <span class="cvsig">${esc(label)}</span>` : '';
+    return `<div class="votebar"><button class="setbtn" id="votereport" title="Report this question as bad or wrong">👎 Report</button>${signal}</div>`;
+  }
+
+  /* downvote reason panel ------------------------------------------------- */
+  const REASON_CHIPS = ['Wrong answer', 'Misleading wording', 'Not in the guide', 'Outdated', 'Other'];
+  // in-page panel asking why a question was downvoted. The vote itself is
+  // already recorded: Send attaches the reason, Skip keeps the bare vote.
+  function openReasonPanel(q, opts) {
+    closeReasonPanel();
+    const wrap = document.createElement('div');
+    wrap.id = 'rpwrap';
+    wrap.innerHTML = `<div class="card rpanel" role="dialog" aria-modal="true" aria-label="Why are you reporting this question?">
+      <div class="rptitle">What's wrong with this question?</div>
+      ${opts && opts.banner ? `<div class="rpbanner">${esc(opts.banner)}</div>` : ''}
+      <div class="rpq">${esc(q.question)}</div>
+      <div class="rpchips">${REASON_CHIPS.map(r => `<button class="chip" data-r="${esc(r)}">${esc(r)}</button>`).join('')}</div>
+      <textarea class="rpnote" id="rpnote" maxlength="500" placeholder="Optional detail (max 500 characters)\u2026"></textarea>
+      <div class="rpmsg" id="rpmsg"></div>
+      <div class="nextrow"><button class="btn ghost" id="rpskip">Skip</button><button class="btn" id="rpsend">Send reason</button></div>
+    </div>`;
+    document.body.appendChild(wrap);
+    let tag = '';
+    const chips = wrap.querySelectorAll('.rpchips .chip');
+    chips.forEach(c => c.onclick = () => {
+      const on = c.classList.toggle('on');
+      if (on) tag = c.dataset.r;
+      chips.forEach(o => { if (o !== c) o.classList.remove('on'); });
+    });
+    wrap.querySelector('#rpsend').onclick = () => {
+      const note = wrap.querySelector('#rpnote').value.trim().slice(0, 500);
+      const send = wrap.querySelector('#rpsend');
+      send.disabled = true;
+      sendReportVote(q.id, 'down', note ? (tag ? tag + ' \u2014 ' + note : note) : tag).then(function () {
+        closeReasonPanel();
+        if (opts && opts.onDone) opts.onDone();
+      }).catch(function () {
+        send.disabled = false;
+        wrap.querySelector('#rpmsg').textContent = 'Could not send \u2014 try again';
+      });
+    };
+    wrap.querySelector('#rpskip').onclick = () => { closeReasonPanel(); if (opts && opts.onDone) opts.onDone(); };
+    wrap.querySelector('#rpnote').focus();
+  }
+  function closeReasonPanel() { const w = document.getElementById('rpwrap'); if (w) w.remove(); }
+  // exam results: one reason prompt per downvoted question, in order; sent or
+  // skipped rows are remembered so re-showing the results does not re-ask
+  function promptExamReports() {
+    const v = S.view;
+    const sent = v.examReportSent = v.examReportSent || {};
+    const next = (v.examReports || []).find(id => !sent[id] && S.byId.get(id));
+    if (!next) return;
+    openReasonPanel(S.byId.get(next), {
+      banner: 'You reported ' + v.examReports.length + ' question' + (v.examReports.length === 1 ? '' : 's') + ' during this exam',
+      onDone: function () { sent[next] = true; setTimeout(promptExamReports, 400); },
+    });
   }
 
   /* ------------------------------------------------ summaries */
@@ -1504,5 +1593,7 @@
     document.getElementById('resulthead').focus();
     $('#home').onclick = () => withTransition(gotoIdle);
     $('#again').onclick = startExam;
+    // downvotes queued during the exam get their reason prompts here
+    if (v.examReports && v.examReports.length) promptExamReports();
   }
 })();
