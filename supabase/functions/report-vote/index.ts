@@ -133,17 +133,20 @@ Deno.serve(async (req) => {
 
     // persist the event (answered pings also increment the outcome stats)
     if (isAnswerPing) {
-      await admin.rpc('apply_report_ping', {
+      const { error: pingErr } = await admin.rpc('apply_report_ping', {
         p_bank: bankId, p_qid: qid, p_device: deviceId, p_ip_hash: ipHash,
       });
-      await admin.rpc('bump_question_stats', {
+      if (pingErr) return json({ error: 'ping rpc: ' + String(pingErr.message).slice(0, 160) }, 500);
+      const { error: bumpErr } = await admin.rpc('bump_question_stats', {
         p_bank: bankId, p_qid: qid, p_correct: correct, p_picked: pickedRaw,
       });
+      if (bumpErr) return json({ error: 'stats rpc: ' + String(bumpErr.message).slice(0, 160) }, 500);
     } else {
-      await admin.rpc('apply_report_vote', {
+      const { error: voteErr } = await admin.rpc('apply_report_vote', {
         p_bank: bankId, p_qid: qid, p_vote: vote, p_device: deviceId,
         p_ip_hash: ipHash, p_fp: fingerprint, p_ua: ua, p_reason: reason,
       });
+      if (voteErr) return json({ error: 'vote rpc: ' + String(voteErr.message).slice(0, 160) }, 500);
     }
 
     // fresh aggregate for this question
