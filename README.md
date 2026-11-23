@@ -34,9 +34,10 @@ in the guide. Runs entirely in your browser.
   questions.
 - **Named profiles** with separate progress, plus share links / backup files that
   hand your progress to another device.
-- **Community signals** — every answered question carries 👍 Good / 👎 Report buttons;
-  votes are stored in a Supabase project you configure (schema in `supabase/`),
-  and answered questions show a small "endorsed · reported" chip with live counts.
+- **Community signals** — answering a question counts it, and the vote bar holds
+  a single Report button; answers and reports are stored in a Supabase project
+  you configure (schema in `supabase/`), with a small "answered · reports" chip
+  showing live counts on every question, and a reason popup for reports.
   "Write details…" opens the ready-made GitHub issue form for full reports.
 - **No dependencies** — five static files and two fonts; no build step, no framework.
 
@@ -102,7 +103,7 @@ with a prefilled issue — that is on you, not automatic.
 ## Contributing
 
 Found a question that clashes with the guide, or a typo in it? Press
-**👎 Report** on an answered question and tell us what's wrong — the report
+**Report**, on an answered question and tell us what's wrong — the report
 records your vote and asks for a reason (you can add detail, or skip). Code
 PRs welcome: keep it dependency-free and vanilla.
 

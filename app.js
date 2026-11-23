@@ -1435,7 +1435,7 @@
         vr.disabled = true;
         sendReportVote(q.id, 'down').then(function (res) {
           const sig = mergeSignal(q.id, res || {});
-          vr.textContent = '👎 Reported';
+          vr.textContent = 'Reported';
           vr.classList.add('on');
           refreshSignalChips(q.id, sig);
           // practice/review: ask why right away; exam defers it to the results
@@ -1476,7 +1476,7 @@
   function flagHtml(q) {
     const label = sigLabel((window.SIGNAL_CACHE || {})[q.id] || {});
     const signal = label ? ` · <span class="cvsig">${esc(label)}</span>` : '';
-    return `<div class="votebar"><button class="setbtn" id="votereport" title="Report this question as bad or wrong">👎 Report</button>${signal}</div>`;
+    return `<div class="votebar"><button class="setbtn" id="votereport" title="Report this question as bad or wrong">Report</button>${signal}</div>`;
   }
 
   /* downvote reason panel ------------------------------------------------- */
